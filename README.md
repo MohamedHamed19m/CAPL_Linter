@@ -7,6 +7,7 @@
 
 ## 🚀 Features
 
+- **Auto-Fix System**: Automatically resolves common linting issues.
 - **Dependency Analysis**: Track `#include` relationships and build dependency graphs
 - **Symbol Extraction**: Extract functions, variables, event handlers, and CAPL-specific constructs
 - **Cross-Reference System**: Find all references to any symbol across your codebase
@@ -140,6 +141,15 @@ capl-lint --project
 
 # Filter by severity
 capl-lint --severity warning MyNode.can
+
+# Show what would be fixed (dry run)
+capl-lint --fix-dry-run MyNode.can
+
+# Automatically fix issues
+capl-lint --fix MyNode.can
+
+# Fix only specific rule IDs
+capl-lint --fix --fix-only variable-outside-block MyNode.can
 ```
 
 ## 🏗️ Project Structure
