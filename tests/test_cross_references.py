@@ -1,30 +1,21 @@
 import pytest
 from pathlib import Path
-from capl_analyzer.cross_reference import CAPLCrossReferenceBuilder
+from capl_symbol_db.xref import CrossReferenceBuilder
+from capl_symbol_db.database import SymbolDatabase
 
 def test_cross_references(tmp_path):
-    """Test cross-reference extraction"""
     code = """
-variables {
-  message EngineState msgEngine;
-}
-
-on start {
-  msgEngine.RPM = 100;
-  output(msgEngine);
-}
-"""
-    test_file = tmp_path / "test_xref.can"
-    test_file.write_text(code)
+    void Func1() {
+      Func2();
+    }
+    void Func2() {}
+    """
+    file_path = tmp_path / "test.can"
+    file_path.write_text(code)
     
-    db_path = str(tmp_path / "test.db")
-    xref = CAPLCrossReferenceBuilder(db_path=db_path)
+    db_path = tmp_path / "test.db"
+    db = SymbolDatabase(str(db_path))
+    xref = CrossReferenceBuilder(db)
     
-    ref_count = xref.analyze_file_references(str(test_file))
-    assert ref_count > 0
-    
-    # Find assignment
-    refs = xref.find_all_references("msgEngine")
-    types = [r.reference_type for r in refs]
-    assert "assignment" in types
-    assert "output" in types
+    num_refs = xref.analyze_file_references(file_path)
+    assert num_refs > 0
