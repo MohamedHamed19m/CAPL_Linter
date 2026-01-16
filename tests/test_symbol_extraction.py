@@ -8,7 +8,7 @@ import sqlite3
 
 def test_symbol_extraction(file_path: str = "EnhancedNode.can"):
     """Test symbol extraction on a CAPL file"""
-    from capl_symbol_extractor import CAPLSymbolExtractor, update_database_schema
+    from capl_analyzer.symbol_extractor import CAPLSymbolExtractor, update_database_schema
       
     print("=" * 70)
     print(f"TESTING SYMBOL EXTRACTION: {file_path}")

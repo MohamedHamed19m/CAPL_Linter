@@ -8,7 +8,7 @@ import sqlite3
 
 def test_cross_references(file_path: str = "MyNode.can"):
     """Test cross-reference extraction"""
-    from capl_cross_reference import CAPLCrossReferenceBuilder
+    from capl_analyzer.cross_reference import CAPLCrossReferenceBuilder
     
     print("=" * 70)
     print("BUILDING CROSS-REFERENCES")
@@ -294,7 +294,7 @@ def run_comprehensive_analysis():
 
 def interactive_query():
     """Interactive query interface"""
-    from capl_cross_reference import CAPLCrossReferenceBuilder
+    from capl_analyzer.cross_reference import CAPLCrossReferenceBuilder
     
     xref = CAPLCrossReferenceBuilder()
     

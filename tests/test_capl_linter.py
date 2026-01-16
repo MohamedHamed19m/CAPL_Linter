@@ -104,9 +104,9 @@ void BuggyFunction() {
 
 def run_full_analysis():
     """Run complete analysis pipeline"""
-    from capl_symbol_extractor import CAPLSymbolExtractor
-    from capl_cross_reference import CAPLCrossReferenceBuilder
-    from capl_linter import CAPLLinter
+    from capl_analyzer.symbol_extractor import CAPLSymbolExtractor
+    from capl_analyzer.cross_reference import CAPLCrossReferenceBuilder
+    from capl_analyzer.linter import CAPLLinter
     
     print("=" * 70)
     print("FULL CAPL ANALYSIS PIPELINE")
@@ -157,9 +157,9 @@ def run_full_analysis():
 
 def analyze_existing_file(file_path: str):
     """Analyze an existing CAPL file"""
-    from capl_symbol_extractor import CAPLSymbolExtractor
-    from capl_cross_reference import CAPLCrossReferenceBuilder
-    from capl_linter import CAPLLinter
+    from capl_analyzer.symbol_extractor import CAPLSymbolExtractor
+    from capl_analyzer.cross_reference import CAPLCrossReferenceBuilder
+    from capl_analyzer.linter import CAPLLinter
     
     print(f"Analyzing: {file_path}")
     print("=" * 70)
@@ -266,7 +266,7 @@ void Helper() {
 
 def quick_check(file_path: str):
     """Quick check - just show error and warning counts"""
-    from capl_linter import CAPLLinter, Severity
+    from capl_analyzer.linter import CAPLLinter, Severity
     
     linter = CAPLLinter()
     issues = linter.analyze_file(file_path)

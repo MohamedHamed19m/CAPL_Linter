@@ -33,6 +33,17 @@ class CAPLCrossReferenceBuilder:
     def _init_database(self):
         """Create cross-reference tables"""
         with sqlite3.connect(self.db_path) as conn:
+            # Table for files (referenced by other tables)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS files (
+                    file_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    file_path TEXT UNIQUE NOT NULL,
+                    last_parsed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    parse_success BOOLEAN,
+                    file_hash TEXT
+                )
+            """)
+
             # Table for symbol references
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS symbol_references (

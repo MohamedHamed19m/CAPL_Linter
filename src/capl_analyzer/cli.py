@@ -7,9 +7,9 @@ import sys
 from pathlib import Path
 
 from dependency_analyzer import CAPLDependencyAnalyzer
-from capl_symbol_extractor import CAPLSymbolExtractor
-from capl_cross_reference import CAPLCrossReferenceBuilder
-from capl_linter import CAPLLinter
+from capl_analyzer.symbol_extractor import CAPLSymbolExtractor
+from capl_analyzer.cross_reference import CAPLCrossReferenceBuilder
+from capl_analyzer.linter import CAPLLinter
 
 
 def main():

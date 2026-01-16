@@ -28,7 +28,35 @@ class CAPLSymbolExtractor:
         self.db_path = db_path
         self.language = Language(tsc.language())
         self.parser = Parser(self.language)
+        self._init_database()
     
+    def _init_database(self):
+        """Create required tables if they don't exist"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS files (
+                    file_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    file_path TEXT UNIQUE NOT NULL,
+                    last_parsed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    parse_success BOOLEAN,
+                    file_hash TEXT
+                )
+            """)
+            
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS symbols (
+                    symbol_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    file_id INTEGER NOT NULL,
+                    symbol_name TEXT NOT NULL,
+                    symbol_type TEXT,
+                    line_number INTEGER,
+                    signature TEXT,
+                    scope TEXT,
+                    FOREIGN KEY (file_id) REFERENCES files(file_id)
+                )
+            """)
+            conn.commit()
+
     def extract_symbols(self, file_path: str) -> List[Symbol]:
         """
         Extract all symbols from a CAPL file
@@ -449,6 +477,16 @@ class CAPLSymbolExtractor:
 def update_database_schema(db_path: str = "aic.db"):
     """Add signature and scope columns to symbols table if they don't exist"""
     with sqlite3.connect(db_path) as conn:
+        # First check if symbols table exists
+        cursor = conn.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='symbols'
+        """)
+        
+        if not cursor.fetchone():
+            # Table doesn't exist yet, it will be created by the extractors
+            return
+        
         # Check if columns exist
         cursor = conn.execute("PRAGMA table_info(symbols)")
         columns = {row[1] for row in cursor.fetchall()}

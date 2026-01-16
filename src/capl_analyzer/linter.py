@@ -37,10 +37,51 @@ class CAPLLinter:
         self.db_path = db_path
         self.issues: List[LintIssue] = []
     
+    def _ensure_file_analyzed(self, file_path: str):
+        """Ensure the file has been analyzed and symbols/refs are in DB"""
+        from .symbol_extractor import CAPLSymbolExtractor
+        from .cross_reference import CAPLCrossReferenceBuilder
+        from .dependency_analyzer import CAPLDependencyAnalyzer
+        
+        extractor = CAPLSymbolExtractor(self.db_path)
+        xref = CAPLCrossReferenceBuilder(self.db_path)
+        dep_analyzer = CAPLDependencyAnalyzer(self.db_path)
+        
+        file_needs_analysis = True
+        
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute("""
+                    SELECT file_id, last_parsed FROM files 
+                    WHERE file_path = ?
+                """, (file_path,))
+                
+                result = cursor.fetchone()
+                
+                if result:
+                    file_id = result[0]
+                    cursor = conn.execute("""
+                        SELECT COUNT(*) FROM symbols WHERE file_id = ?
+                    """, (file_id,))
+                    symbol_count = cursor.fetchone()[0]
+                    
+                    if symbol_count > 0:
+                        file_needs_analysis = False
+        except sqlite3.OperationalError:
+            file_needs_analysis = True
+        
+        if file_needs_analysis:
+            extractor.store_symbols(file_path)
+            xref.analyze_file_references(file_path)
+            dep_analyzer.analyze_file(file_path)
+
     def analyze_file(self, file_path: str) -> List[LintIssue]:
         """Run all lint checks on a file"""
         self.issues = []
         file_path = str(Path(file_path).resolve())
+        
+        # Ensure file is analyzed before linting
+        self._ensure_file_analyzed(file_path)
         
         # Run various checks
         self._check_unused_variables(file_path)
@@ -59,9 +100,14 @@ class CAPLLinter:
         """Run all lint checks on entire project"""
         self.issues = []
         
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("SELECT DISTINCT file_path FROM files")
-            files = [row[0] for row in cursor.fetchall()]
+        files = []
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute("SELECT DISTINCT file_path FROM files")
+                files = [row[0] for row in cursor.fetchall()]
+        except sqlite3.OperationalError:
+            # Table might not exist yet
+            pass
         
         for file_path in files:
             self.analyze_file(file_path)
@@ -579,8 +625,8 @@ class CAPLLinter:
         return "\n".join(report)
 
 
-# CLI Interface
-if __name__ == "__main__":
+def main():
+    """Main entry point for capl-lint CLI"""
     import sys
     import argparse
     
@@ -590,19 +636,40 @@ if __name__ == "__main__":
                        help="Analyze entire project in database")
     parser.add_argument("--severity", choices=["error", "warning", "info", "style"],
                        help="Only show issues of this severity or higher")
+    parser.add_argument("--db", default="aic.db", help="Database path (default: aic.db)")
+    parser.add_argument("--quiet", "-q", action="store_true",
+                       help="Only show the report, not progress messages")
     
     args = parser.parse_args()
     
-    linter = CAPLLinter()
+    linter = CAPLLinter(db_path=args.db)
     
     if args.project:
-        print("Analyzing entire project...")
+        if not args.quiet:
+            print("Analyzing entire project...")
         issues = linter.analyze_project()
     elif args.files:
-        print(f"Analyzing {len(args.files)} file(s)...")
+        if not args.quiet:
+            print(f"Analyzing {len(args.files)} file(s)...")
+            print("(First run may take longer as files are being indexed)")
+            print()
         issues = []
         for file_path in args.files:
-            issues.extend(linter.analyze_file(file_path))
+            if not args.quiet:
+                print(f"  📝 {Path(file_path).name}...", end=" ", flush=True)
+            try:
+                file_issues = linter.analyze_file(file_path)
+                issues.extend(file_issues)
+                if not args.quiet:
+                    print(f"✓ ({len(file_issues)} issues)")
+            except Exception as e:
+                if not args.quiet:
+                    print(f"✗ Error: {e}")
+                else:
+                    print(f"Error analyzing {file_path}: {e}", file=sys.stderr)
+        
+        if not args.quiet:
+            print()
     else:
         parser.print_help()
         sys.exit(1)
@@ -614,3 +681,11 @@ if __name__ == "__main__":
         issues = [i for i in issues if severity_order.index(i.severity.value.lower()) >= min_level]
     
     print(linter.generate_report(issues))
+    
+    # Exit with non-zero if errors found
+    errors = sum(1 for i in issues if i.severity == Severity.ERROR)
+    sys.exit(1 if errors > 0 else 0)
+
+
+if __name__ == "__main__":
+    main()
