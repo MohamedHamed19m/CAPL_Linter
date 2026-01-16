@@ -4,7 +4,7 @@ This plan outlines the steps to implement and refine the core linting rules and 
 
 ## Phase 1: Variable Declaration Enforcement
 
-- [ ] Task: Enforce variable placement rules (outside `variables {}` block)
+- [~] Task: Enforce variable placement rules (outside `variables {}` block)
     - [ ] Write failing tests for variables declared at global scope outside the variables block
     - [ ] Refine implementation in `symbol_extractor.py` and `linter.py` to correctly identify and flag these cases
     - [ ] Implement/Refine auto-fix in `autofix.py` to move declarations into the block

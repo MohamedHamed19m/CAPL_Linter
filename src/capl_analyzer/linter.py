@@ -78,7 +78,7 @@ class CAPLLinter:
 
                         if symbol_count > 0:
                             file_needs_analysis = False
-            except sqlite3.OperationalError:
+            except (sqlite3.OperationalError, sqlite3.DatabaseError):
                 file_needs_analysis = True
 
         if file_needs_analysis or force:
@@ -115,145 +115,157 @@ class CAPLLinter:
         """
         ERROR: Enum/Struct definitions outside variables {} block
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                SELECT t.type_name, t.type_kind, t.line_number
-                FROM type_definitions t
-                JOIN files f ON t.file_id = f.file_id
-                WHERE f.file_path = ?
-                  AND t.scope = 'global'
-            """,
-                (file_path,),
-            )
-
-            for type_name, type_kind, line_num in cursor.fetchall():
-                self.issues.append(
-                    LintIssue(
-                        severity=Severity.ERROR,
-                        file_path=file_path,
-                        line_number=line_num,
-                        column=0,
-                        rule_id=f"global-{type_kind}-definition",
-                        message=f"{type_kind.capitalize()} '{type_name}' defined outside 'variables {{}}' block",
-                        suggestion=f"Move '{type_name}' definition into the variables {{}} block",
-                        auto_fixable=True,
-                    )
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT t.type_name, t.type_kind, t.line_number
+                    FROM type_definitions t
+                    JOIN files f ON t.file_id = f.file_id
+                    WHERE f.file_path = ?
+                      AND t.scope = 'global'
+                """,
+                    (file_path,),
                 )
+
+                for type_name, type_kind, line_num in cursor.fetchall():
+                    self.issues.append(
+                        LintIssue(
+                            severity=Severity.ERROR,
+                            file_path=file_path,
+                            line_number=line_num,
+                            column=0,
+                            rule_id=f"global-{type_kind}-definition",
+                            message=f"{type_kind.capitalize()} '{type_name}' defined outside 'variables {{}}' block",
+                            suggestion=f"Move '{type_name}' definition into the variables {{}} block",
+                            auto_fixable=True,
+                        )
+                    )
+        except sqlite3.Error:
+            pass
 
     def _check_enum_struct_usage(self, file_path: str):
         """
         ERROR: enum/struct type used without keyword
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                SELECT s.symbol_name, s.line_number, s.signature, s.context
-                FROM symbols s
-                JOIN files f ON s.file_id = f.file_id
-                WHERE f.file_path = ?
-                  AND s.symbol_type = 'type_usage_error'
-            """,
-                (file_path,),
-            )
-
-            for var_name, line_num, signature, context in cursor.fetchall():
-                type_kind = context.replace("missing_", "").replace("_keyword", "")
-                type_name = signature.split()[0]
-
-                self.issues.append(
-                    LintIssue(
-                        severity=Severity.ERROR,
-                        file_path=file_path,
-                        line_number=line_num,
-                        column=0,
-                        rule_id=f"missing-{type_kind}-keyword",
-                        message=f"Type '{type_name}' used without '{type_kind}' keyword in declaration of '{var_name}'",
-                        suggestion=f"Change '{signature}' to '{type_kind} {signature}'",
-                        auto_fixable=True,
-                    )
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT s.symbol_name, s.line_number, s.signature, s.context
+                    FROM symbols s
+                    JOIN files f ON s.file_id = f.file_id
+                    WHERE f.file_path = ?
+                      AND s.symbol_type = 'type_usage_error'
+                """,
+                    (file_path,),
                 )
+
+                for var_name, line_num, signature, context in cursor.fetchall():
+                    type_kind = context.replace("missing_", "").replace("_keyword", "")
+                    type_name = signature.split()[0]
+
+                    self.issues.append(
+                        LintIssue(
+                            severity=Severity.ERROR,
+                            file_path=file_path,
+                            line_number=line_num,
+                            column=0,
+                            rule_id=f"missing-{type_kind}-keyword",
+                            message=f"Type '{type_name}' used without '{type_kind}' keyword in declaration of '{var_name}'",
+                            suggestion=f"Change '{signature}' to '{type_kind} {signature}'",
+                            auto_fixable=True,
+                        )
+                    )
+        except sqlite3.Error:
+            pass
 
     def _check_forbidden_syntax(self, file_path: str):
         """
         ERROR: Forbidden syntax used (function declarations, extern)
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                SELECT s.symbol_name, s.line_number, s.signature, s.context
-                FROM symbols s
-                JOIN files f ON s.file_id = f.file_id
-                WHERE f.file_path = ?
-                  AND s.symbol_type = 'forbidden_syntax'
-            """,
-                (file_path,),
-            )
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT s.symbol_name, s.line_number, s.signature, s.context
+                    FROM symbols s
+                    JOIN files f ON s.file_id = f.file_id
+                    WHERE f.file_path = ?
+                      AND s.symbol_type = 'forbidden_syntax'
+                """,
+                    (file_path,),
+                )
 
-            for symbol_name, line_num, signature, context in cursor.fetchall():
-                if context == "function_declaration":
-                    self.issues.append(
-                        LintIssue(
-                            severity=Severity.ERROR,
-                            file_path=file_path,
-                            line_number=line_num,
-                            column=0,
-                            rule_id="function-declaration",
-                            message=f"Function declaration '{symbol_name}' is not allowed in CAPL",
-                            suggestion=f"Remove this declaration and keep only the function definition (implementation)",
-                            auto_fixable=True,
+                for symbol_name, line_num, signature, context in cursor.fetchall():
+                    if context == "function_declaration":
+                        self.issues.append(
+                            LintIssue(
+                                severity=Severity.ERROR,
+                                file_path=file_path,
+                                line_number=line_num,
+                                column=0,
+                                rule_id="function-declaration",
+                                message=f"Function declaration '{symbol_name}' is not allowed in CAPL",
+                                suggestion=f"Remove this declaration and keep only the function definition (implementation)",
+                                auto_fixable=True,
+                            )
                         )
-                    )
-                elif context == 'extern_keyword':
-                    self.issues.append(
-                        LintIssue(
-                            severity=Severity.ERROR,
-                            file_path=file_path,
-                            line_number=line_num,
-                            column=0,
-                            rule_id="extern-keyword",
-                            message=f"'extern' keyword is not allowed in CAPL",
-                            suggestion=f"Remove 'extern' keyword. Use #include for external definitions or declare in variables {{}} block",
-                            auto_fixable=True
+                    elif context == 'extern_keyword':
+                        self.issues.append(
+                            LintIssue(
+                                severity=Severity.ERROR,
+                                file_path=file_path,
+                                line_number=line_num,
+                                column=0,
+                                rule_id="extern-keyword",
+                                message=f"'extern' keyword is not allowed in CAPL",
+                                suggestion=f"Remove 'extern' keyword. Use #include for external definitions or declare in variables {{}} block",
+                                auto_fixable=True
+                            )
                         )
-                    )
+        except sqlite3.Error:
+            pass
 
     def _check_mid_block_declarations(self, file_path: str):
         """
         ERROR: Variable declared after executable statements in function/testcase
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                SELECT s.symbol_name, s.line_number, s.parent_symbol, s.declaration_position
-                FROM symbols s
-                JOIN files f ON s.file_id = f.file_id
-                WHERE f.file_path = ?
-                  AND s.symbol_type = 'variable'
-                  AND s.scope = 'local'
-                  AND s.declaration_position = 'mid_block'
-            """,
-                (file_path,),
-            )
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT s.symbol_name, s.line_number, s.parent_symbol, s.declaration_position
+                    FROM symbols s
+                    JOIN files f ON s.file_id = f.file_id
+                    WHERE f.file_path = ?
+                      AND s.symbol_type = 'variable'
+                      AND s.scope = 'local'
+                      AND s.declaration_position = 'mid_block'
+                """,
+                    (file_path,),
+                )
 
-            for var_name, line_num, parent_func, position in cursor.fetchall():
-                parent_type = (
-                    "testcase"
-                    if parent_func and parent_func.startswith("testcase ")
-                    else "function"
-                )
-                self.issues.append(
-                    LintIssue(
-                        severity=Severity.ERROR,
-                        file_path=file_path,
-                        line_number=line_num,
-                        column=0,
-                        rule_id="variable-mid-block",
-                        message=f"Variable '{var_name}' declared after executable statements in {parent_type} '{parent_func}'",
-                        suggestion=f"Move '{var_name}' declaration to the start of the {parent_type} block, before any executable statements",
-                        auto_fixable=True,
+                for var_name, line_num, parent_func, position in cursor.fetchall():
+                    parent_type = (
+                        "testcase"
+                        if parent_func and parent_func.startswith("testcase ")
+                        else "function"
                     )
-                )
+                    self.issues.append(
+                        LintIssue(
+                            severity=Severity.ERROR,
+                            file_path=file_path,
+                            line_number=line_num,
+                            column=0,
+                            rule_id="variable-mid-block",
+                            message=f"Variable '{var_name}' declared after executable statements in {parent_type} '{parent_func}'",
+                            suggestion=f"Move '{var_name}' declaration to the start of the {parent_type} block, before any executable statements",
+                            auto_fixable=True,
+                        )
+                    )
+        except sqlite3.Error:
+            pass
 
     def analyze_project(self) -> List[LintIssue]:
         """Run all lint checks on entire project"""

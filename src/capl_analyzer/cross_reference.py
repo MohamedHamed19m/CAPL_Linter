@@ -1,30 +1,30 @@
 """
-CAPL Cross-Reference System
-Tracks where symbols are used, builds call graphs, and enables "find all references"
+CAPL Cross-Reference Builder using Tree-sitter
+Tracks where symbols are used and builds a call graph in aic.db
 """
 
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
+from typing import List, Optional
 
 import tree_sitter_c as tsc
 from tree_sitter import Language, Node, Parser, Query, QueryCursor
 
 
 @dataclass
-class Reference:
-    """A reference to a symbol"""
+class SymbolReference:
+    """Represents a usage of a symbol in CAPL code"""
 
+    symbol_name: str
     file_path: str
     line_number: int
     column: int
-    context: str  # The line of code containing the reference
-    reference_type: str  # 'call', 'usage', 'output', 'assignment'
+    reference_type: str  # 'call', 'usage', 'assignment', 'output'
+    context: str | None = None  # Function name where the reference occurs
 
 
 class CAPLCrossReferenceBuilder:
-    """Build cross-reference database for CAPL symbols"""
-
     def __init__(self, db_path: str = "aic.db"):
         self.db_path = db_path
         self.language = Language(tsc.language())
@@ -32,147 +32,117 @@ class CAPLCrossReferenceBuilder:
         self._init_database()
 
     def _init_database(self):
-        """Create cross-reference tables"""
-        with sqlite3.connect(self.db_path) as conn:
-            # Table for files (referenced by other tables)
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS files (
-                    file_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    file_path TEXT UNIQUE NOT NULL,
-                    last_parsed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    parse_success BOOLEAN,
-                    file_hash TEXT
-                )
-            """)
+        """Create tables for cross-reference tracking"""
+        conn = sqlite3.connect(self.db_path)
+        try:
+            with conn:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS symbol_references (
+                        ref_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_id INTEGER NOT NULL,
+                        symbol_name TEXT NOT NULL,
+                        line_number INTEGER,
+                        column_number INTEGER,
+                        reference_type TEXT,
+                        context TEXT,
+                        FOREIGN KEY (file_id) REFERENCES files(file_id)
+                    )
+                """)
 
-            # Table for symbol references
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS symbol_references (
-                    ref_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    symbol_name TEXT NOT NULL,
-                    file_id INTEGER NOT NULL,
-                    line_number INTEGER NOT NULL,
-                    column_number INTEGER,
-                    reference_type TEXT,  -- 'call', 'usage', 'output', 'assignment'
-                    context TEXT,  -- Line of code containing the reference
-                    FOREIGN KEY (file_id) REFERENCES files(file_id)
-                )
-            """)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS message_usage (
+                        usage_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_id INTEGER NOT NULL,
+                        message_name TEXT NOT NULL,
+                        usage_type TEXT, -- 'output', 'on message'
+                        line_number INTEGER,
+                        FOREIGN KEY (file_id) REFERENCES files(file_id)
+                    )
+                """)
 
-            # Table for function calls (call graph)
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS function_calls (
-                    call_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    caller_symbol_id INTEGER NOT NULL,
-                    callee_name TEXT NOT NULL,
-                    file_id INTEGER NOT NULL,
-                    line_number INTEGER NOT NULL,
-                    FOREIGN KEY (caller_symbol_id) REFERENCES symbols(symbol_id),
-                    FOREIGN KEY (file_id) REFERENCES files(file_id)
-                )
-            """)
-
-            # Table for message usage (CAPL-specific)
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS message_usage (
-                    usage_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    message_name TEXT NOT NULL,
-                    usage_type TEXT NOT NULL,  -- 'handler', 'output', 'reference'
-                    symbol_id INTEGER,  -- Which function/handler uses it
-                    file_id INTEGER NOT NULL,
-                    line_number INTEGER NOT NULL,
-                    FOREIGN KEY (symbol_id) REFERENCES symbols(symbol_id),
-                    FOREIGN KEY (file_id) REFERENCES files(file_id)
-                )
-            """)
-
-            # Indexes for fast lookups
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_symbol_refs_name 
-                ON symbol_references(symbol_name)
-            """)
-
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_symbol_refs_file 
-                ON symbol_references(file_id)
-            """)
-
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_function_calls_caller
-                ON function_calls(caller_symbol_id)
-            """)
-
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_function_calls_callee
-                ON function_calls(callee_name)
-            """)
-
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_message_usage_name
-                ON message_usage(message_name)
-            """)
-
-            conn.commit()
+                # Index for fast search
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_refs_name 
+                    ON symbol_references(symbol_name)
+                """)
+        finally:
+            conn.close()
 
     def analyze_file_references(self, file_path: str) -> int:
         """
-        Analyze a file and extract all symbol references
-
-        Returns:
-            Number of references found
+        Scan a file for symbol usages and store them in the DB
         """
         file_path = str(Path(file_path).resolve())
 
         with open(file_path, "rb") as f:
             source_code = f.read()
 
-        source_text = source_code.decode("utf8")
         tree = self.parser.parse(source_code)
         root = tree.root_node
+        source_text = source_code.decode("utf8")
 
-        with sqlite3.connect(self.db_path) as conn:
-            # Get or create file_id
-            cursor = conn.execute(
-                """
-                INSERT INTO files (file_path, parse_success)
-                VALUES (?, 1)
-                ON CONFLICT(file_path) DO UPDATE SET
-                    last_parsed = CURRENT_TIMESTAMP
-                RETURNING file_id
-            """,
-                (file_path,),
-            )
+        references = []
+        references.extend(self._extract_function_calls(root, source_text, file_path))
+        references.extend(self._extract_variable_usages(root, source_text, file_path))
+        message_usages = self._extract_message_usages(root, source_text, file_path)
 
-            file_id = cursor.fetchone()[0]
+        # Store in database
+        conn = sqlite3.connect(self.db_path)
+        try:
+            with conn:
+                # Get file_id
+                cursor = conn.execute(
+                    "SELECT file_id FROM files WHERE file_path = ?", (file_path,)
+                )
+                result = cursor.fetchone()
+                if not result:
+                    # Register file if not exists
+                    cursor = conn.execute(
+                        "INSERT INTO files (file_path, parse_success) VALUES (?, 1) RETURNING file_id",
+                        (file_path,),
+                    )
+                    file_id = cursor.fetchone()[0]
+                else:
+                    file_id = result[0]
 
-            # Clear old references for this file
-            conn.execute("DELETE FROM symbol_references WHERE file_id = ?", (file_id,))
-            conn.execute("DELETE FROM function_calls WHERE file_id = ?", (file_id,))
-            conn.execute("DELETE FROM message_usage WHERE file_id = ?", (file_id,))
+                # Clear old references
+                conn.execute("DELETE FROM symbol_references WHERE file_id = ?", (file_id,))
+                conn.execute("DELETE FROM message_usage WHERE file_id = ?", (file_id,))
 
-            # Extract different types of references
-            refs_count = 0
+                # Store new ones
+                for ref in references:
+                    conn.execute(
+                        """
+                        INSERT INTO symbol_references 
+                        (file_id, symbol_name, line_number, column_number, reference_type, context)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                        (
+                            file_id,
+                            ref.symbol_name,
+                            ref.line_number,
+                            ref.column,
+                            ref.reference_type,
+                            ref.context,
+                        ),
+                    )
 
-            # 1. Function calls
-            refs_count += self._extract_function_calls(root, source_text, file_id, conn)
+                for msg in message_usages:
+                    conn.execute(
+                        """
+                        INSERT INTO message_usage (file_id, message_name, usage_type, line_number)
+                        VALUES (?, ?, ?, ?)
+                    """,
+                        (file_id, msg["name"], msg["type"], msg["line"]),
+                    )
+        finally:
+            conn.close()
 
-            # 2. Variable usages
-            refs_count += self._extract_variable_references(root, source_text, file_id, conn)
+        return len(references)
 
-            # 3. CAPL-specific: output() calls with messages
-            refs_count += self._extract_message_output(root, source_text, file_id, conn)
-
-            # 4. CAPL-specific: setTimer() calls
-            refs_count += self._extract_timer_usage(root, source_text, file_id, conn)
-
-            conn.commit()
-
-        return refs_count
-
-    def _extract_function_calls(self, root: Node, source: str, file_id: int, conn) -> int:
-        """Extract all function call expressions"""
-        count = 0
-
+    def _extract_function_calls(self, root: Node, source: str, file_path: str) -> list[SymbolReference]:
+        """Find all function calls: name(args)"""
+        refs = []
         query = Query(
             self.language,
             """
@@ -180,420 +150,208 @@ class CAPLCrossReferenceBuilder:
               function: (identifier) @func_name) @call
         """,
         )
-
         cursor = QueryCursor(query)
         cursor.set_byte_range(0, len(source.encode("utf8")))
         matches = cursor.matches(root)
 
         for pattern_index, captures_dict in matches:
             if "func_name" in captures_dict:
-                for func_node in captures_dict["func_name"]:
-                    func_name = source[func_node.start_byte : func_node.end_byte]
-                    line_num = func_node.start_point[0] + 1
-                    col_num = func_node.start_point[1]
+                for node in captures_dict["func_name"]:
+                    func_name = source[node.start_byte : node.end_byte]
+                    line = node.start_point[0] + 1
+                    col = node.start_point[1]
+                    context = self._get_enclosing_function(node, source)
 
-                    # Get context (the line of code)
-                    lines = source.split("\n")
-                    context = lines[line_num - 1].strip() if line_num <= len(lines) else ""
+                    refs.append(
+                        SymbolReference(
+                            symbol_name=func_name,
+                            file_path=file_path,
+                            line_number=line,
+                            column=col,
+                            reference_type="call",
+                            context=context,
+                        )
+                    )
+        return refs
 
-                    # Store reference
-                    conn.execute(
-                        """
-                        INSERT INTO symbol_references
-                        (symbol_name, file_id, line_number, column_number, 
-                         reference_type, context)
-                        VALUES (?, ?, ?, ?, 'call', ?)
-                    """,
-                        (func_name, file_id, line_num, col_num, context),
+    def _extract_variable_usages(self, root: Node, source: str, file_path: str) -> list[SymbolReference]:
+        """Find variable usages in expressions"""
+        refs = []
+        # Query for identifiers not part of a declaration or function name
+        query = Query(
+            self.language,
+            """
+            (identifier) @id
+        """,
+        )
+        cursor = QueryCursor(query)
+        cursor.set_byte_range(0, len(source.encode("utf8")))
+        matches = cursor.matches(root)
+
+        for pattern_index, captures_dict in matches:
+            for node in captures_dict["id"]:
+                if self._is_actual_usage(node):
+                    name = source[node.start_byte : node.end_byte]
+                    line = node.start_point[0] + 1
+                    col = node.start_point[1]
+                    context = self._get_enclosing_function(node, source)
+
+                    # Determine if it's an assignment
+                    ref_type = "usage"
+                    if node.parent and node.parent.type == "assignment_expression":
+                        # Check if it's the left side
+                        left_node = node.parent.child_by_field_name("left")
+                        if left_node == node:
+                            ref_type = "assignment"
+
+                    refs.append(
+                        SymbolReference(
+                            symbol_name=name,
+                            file_path=file_path,
+                            line_number=line,
+                            column=col,
+                            reference_type=ref_type,
+                            context=context,
+                        )
+                    )
+        return refs
+
+    def _is_actual_usage(self, node: Node) -> bool:
+        """Filter out declarations, function names, etc."""
+        p = node.parent
+        if not p:
+            return False
+
+        # Ignore if part of a declaration
+        if p.type in ("declaration", "init_declarator", "parameter_declaration", "field_declaration"):
+            return False
+
+        # Ignore if it's the name of a function being defined
+        if p.type == "function_declarator":
+            return False
+
+        # Ignore if it's a member access (the part after the dot)
+        if p.type == "field_expression":
+            field_node = p.child_by_field_name("field")
+            if field_node == node:
+                return False
+
+        return True
+
+    def _extract_message_usages(self, root: Node, source: str, file_path: str) -> list[dict]:
+        """Find 'output(msg)' calls and 'on message' handlers"""
+        usages = []
+
+        # 1. Find output(msg)
+        query_out = Query(
+            self.language,
+            """
+            (call_expression
+              function: (identifier) @func
+              arguments: (argument_list (identifier) @msg_name))
+        """,
+        )
+        cursor = QueryCursor(query_out)
+        cursor.set_byte_range(0, len(source.encode("utf8")))
+        for pattern_index, captures_dict in cursor.matches(root):
+            if "func" in captures_dict and "msg_name" in captures_dict:
+                func_node = captures_dict["func"][0]
+                if source[func_node.start_byte : func_node.end_byte] == "output":
+                    msg_node = captures_dict["msg_name"][0]
+                    usages.append(
+                        {
+                            "name": source[msg_node.start_byte : msg_node.end_byte],
+                            "type": "output",
+                            "line": msg_node.start_point[0] + 1,
+                        }
                     )
 
-                    # Also store in function_calls table for call graph
-                    # Find which function this call is inside
-                    caller_id = self._find_containing_function(func_node, source, file_id, conn)
-                    if caller_id:
-                        conn.execute(
-                            """
-                            INSERT INTO function_calls
-                            (caller_symbol_id, callee_name, file_id, line_number)
-                            VALUES (?, ?, ?, ?)
-                        """,
-                            (caller_id, func_name, file_id, line_num),
-                        )
+        # 2. Find 'on message' handlers (already extracted as symbols, but good to have here too)
+        # For simplicity, we assume linter will check both tables if needed.
 
-                    count += 1
+        return usages
 
-        return count
-
-    def _find_containing_function(self, node: Node, source: str, file_id: int, conn) -> int | None:
-        """Find the function/event handler that contains this node"""
-        # Walk up the tree to find a function_definition
-        parent = node.parent
-        while parent:
-            if parent.type == "function_definition":
-                # Get the function name
-                func_text = source[parent.start_byte : parent.end_byte]
-                first_line = func_text.split("\n")[0].strip()
-
-                # Extract function/event handler name
-                if first_line.startswith("on "):
-                    # Event handler
-                    symbol_name = first_line.split("{")[0].strip()
-                else:
-                    # Regular function - find the identifier
-                    for child in parent.children:
-                        if child.type == "function_declarator":
-                            for subchild in child.children:
-                                if subchild.type == "identifier":
-                                    symbol_name = source[subchild.start_byte : subchild.end_byte]
-                                    break
-                            break
-                    else:
-                        return None
-
-                # Look up symbol_id
-                cursor = conn.execute(
-                    """
-                    SELECT symbol_id FROM symbols s
-                    JOIN files f ON s.file_id = f.file_id
-                    WHERE f.file_id = ? AND s.symbol_name = ?
-                    LIMIT 1
-                """,
-                    (file_id, symbol_name),
-                )
-
-                result = cursor.fetchone()
-                return result[0] if result else None
-
-            parent = parent.parent
-
+    def _get_enclosing_function(self, node: Node, source: str) -> str | None:
+        """Find the name of the function containing this node"""
+        curr = node
+        while curr:
+            if curr.type == "function_definition":
+                # Find function name in declarator
+                decl = curr.child_by_field_name("declarator")
+                if decl:
+                    # Support both normal functions and 'on message' style
+                    if decl.type == "function_declarator":
+                        name_node = decl.child_by_field_name("declarator")
+                        if name_node:
+                            return source[name_node.start_byte : name_node.end_byte]
+                # Fallback to first line
+                return source[curr.start_byte : curr.end_byte].split("{")[0].strip()
+            curr = curr.parent
         return None
 
-    def _extract_variable_references(self, root: Node, source: str, file_id: int, conn) -> int:
-        """Extract variable usage (not declarations)"""
-        count = 0
-
-        # Query for identifier usage
-        query = Query(
-            self.language,
-            """
-            (identifier) @var
-        """,
-        )
-
-        cursor = QueryCursor(query)
-        cursor.set_byte_range(0, len(source.encode("utf8")))
-        matches = cursor.matches(root)
-
-        for pattern_index, captures_dict in matches:
-            if "var" in captures_dict:
-                for var_node in captures_dict["var"]:
-                    # Skip if this is a function declaration or definition
-                    if self._is_declaration(var_node):
-                        continue
-
-                    # Skip if this is a function name in a call (already handled)
-                    parent = var_node.parent
-                    if parent and parent.type == "call_expression":
-                        continue
-
-                    var_name = source[var_node.start_byte : var_node.end_byte]
-                    line_num = var_node.start_point[0] + 1
-                    col_num = var_node.start_point[1]
-
-                    # Get context
-                    lines = source.split("\n")
-                    context = lines[line_num - 1].strip() if line_num <= len(lines) else ""
-
-                    # Determine reference type
-                    ref_type = "usage"
-                    if parent:
-                        # Check if it's an assignment
-                        if parent.type == "assignment_expression":
-                            # Check if identifier is on the left side
-                            if parent.children and parent.children[0] == var_node:
-                                ref_type = "assignment"
-
-                    conn.execute(
-                        """
-                        INSERT INTO symbol_references
-                        (symbol_name, file_id, line_number, column_number,
-                         reference_type, context)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    """,
-                        (var_name, file_id, line_num, col_num, ref_type, context),
-                    )
-
-                    count += 1
-
-        return count
-
-    def _is_declaration(self, node: Node) -> bool:
-        """Check if an identifier node is part of a declaration"""
-        parent = node.parent
-        while parent:
-            if parent.type in (
-                "function_definition",
-                "declaration",
-                "parameter_declaration",
-                "init_declarator",
-            ):
-                return True
-            parent = parent.parent
-        return False
-
-    def _extract_message_output(self, root: Node, source: str, file_id: int, conn) -> int:
-        """Extract CAPL output() calls with message variables"""
-        count = 0
-
-        # Look for output(msgName) patterns
-        query = Query(
-            self.language,
-            """
-            (call_expression
-              function: (identifier) @func_name
-              arguments: (argument_list
-                (identifier) @arg)) @call
-        """,
-        )
-
-        cursor = QueryCursor(query)
-        cursor.set_byte_range(0, len(source.encode("utf8")))
-        matches = cursor.matches(root)
-
-        for pattern_index, captures_dict in matches:
-            if "func_name" in captures_dict and "arg" in captures_dict:
-                for i, func_node in enumerate(captures_dict["func_name"]):
-                    func_name = source[func_node.start_byte : func_node.end_byte]
-
-                    # Check if it's output() function
-                    if func_name == "output":
-                        if i < len(captures_dict["arg"]):
-                            arg_node = captures_dict["arg"][i]
-                            msg_name = source[arg_node.start_byte : arg_node.end_byte]
-                            line_num = arg_node.start_point[0] + 1
-
-                            # Store as message usage
-                            caller_id = self._find_containing_function(
-                                arg_node, source, file_id, conn
-                            )
-
-                            conn.execute(
-                                """
-                                INSERT INTO message_usage
-                                (message_name, usage_type, symbol_id, file_id, line_number)
-                                VALUES (?, 'output', ?, ?, ?)
-                            """,
-                                (msg_name, caller_id, file_id, line_num),
-                            )
-
-                            count += 1
-
-        return count
-
-    def _extract_timer_usage(self, root: Node, source: str, file_id: int, conn) -> int:
-        """Extract setTimer() calls"""
-        count = 0
-
-        query = Query(
-            self.language,
-            """
-            (call_expression
-              function: (identifier) @func_name
-              arguments: (argument_list
-                (identifier) @timer_arg)) @call
-        """,
-        )
-
-        cursor = QueryCursor(query)
-        cursor.set_byte_range(0, len(source.encode("utf8")))
-        matches = cursor.matches(root)
-
-        for pattern_index, captures_dict in matches:
-            if "func_name" in captures_dict and "timer_arg" in captures_dict:
-                for i, func_node in enumerate(captures_dict["func_name"]):
-                    func_name = source[func_node.start_byte : func_node.end_byte]
-
-                    if func_name == "setTimer":
-                        if i < len(captures_dict["timer_arg"]):
-                            timer_node = captures_dict["timer_arg"][i]
-                            timer_name = source[timer_node.start_byte : timer_node.end_byte]
-                            line_num = timer_node.start_point[0] + 1
-                            col_num = timer_node.start_point[1]
-
-                            # Get context
-                            lines = source.split("\n")
-                            context = lines[line_num - 1].strip() if line_num <= len(lines) else ""
-
-                            conn.execute(
-                                """
-                                INSERT INTO symbol_references
-                                (symbol_name, file_id, line_number, column_number,
-                                 reference_type, context)
-                                VALUES (?, ?, ?, ?, 'usage', ?)
-                            """,
-                                (timer_name, file_id, line_num, col_num, context),
-                            )
-
-                            count += 1
-
-        return count
-
-    def find_all_references(self, symbol_name: str) -> list[Reference]:
-        """Find all references to a symbol across the codebase"""
-        with sqlite3.connect(self.db_path) as conn:
+    def find_all_references(self, symbol_name: str) -> list[SymbolReference]:
+        """Find all usages of a symbol across the entire project"""
+        conn = sqlite3.connect(self.db_path)
+        try:
             cursor = conn.execute(
                 """
-                SELECT f.file_path, sr.line_number, sr.column_number,
-                       sr.context, sr.reference_type
-                FROM symbol_references sr
-                JOIN files f ON sr.file_id = f.file_id
-                WHERE sr.symbol_name = ?
-                ORDER BY f.file_path, sr.line_number
+                SELECT f.file_path, r.line_number, r.column_number, r.reference_type, r.context
+                FROM symbol_references r
+                JOIN files f ON r.file_id = f.file_id
+                WHERE r.symbol_name = ?
+                ORDER BY f.file_path, r.line_number
             """,
                 (symbol_name,),
             )
 
-            references = []
-            for file_path, line, col, context, ref_type in cursor.fetchall():
-                references.append(
-                    Reference(
+            results = []
+            for file_path, line, col, ref_type, context in cursor.fetchall():
+                results.append(
+                    SymbolReference(
+                        symbol_name=symbol_name,
                         file_path=file_path,
                         line_number=line,
-                        column=col or 0,
-                        context=context or "",
-                        reference_type=ref_type or "usage",
+                        column=col,
+                        reference_type=ref_type,
+                        context=context,
                     )
                 )
+            return results
+        finally:
+            conn.close()
 
-            return references
-
-    def get_call_graph(self, function_name: str) -> dict[str, list[str]]:
-        """
-        Get the call graph for a function
-
-        Returns:
-            Dict with 'callers' and 'callees' lists
-        """
-        with sqlite3.connect(self.db_path) as conn:
-            # Find who calls this function
+    def get_call_graph(self, func_name: str) -> dict:
+        """Find who calls this function and what this function calls"""
+        conn = sqlite3.connect(self.db_path)
+        try:
+            # Who calls func_name?
             cursor = conn.execute(
                 """
-                SELECT DISTINCT s.symbol_name, f.file_path, fc.line_number
-                FROM function_calls fc
-                JOIN symbols s ON fc.caller_symbol_id = s.symbol_id
-                JOIN files f ON fc.file_id = f.file_id
-                WHERE fc.callee_name = ?
-                ORDER BY s.symbol_name
+                SELECT DISTINCT context, f.file_path 
+                FROM symbol_references r
+                JOIN files f ON r.file_id = f.file_id
+                WHERE symbol_name = ? AND reference_type = 'call' AND context IS NOT NULL
             """,
-                (function_name,),
+                (func_name,),
             )
+            callers = cursor.fetchall()
 
-            callers = [(name, Path(fp).name, line) for name, fp, line in cursor.fetchall()]
-
-            # Find what this function calls
+            # What does func_name call?
             cursor = conn.execute(
                 """
-                SELECT DISTINCT fc.callee_name, f.file_path, fc.line_number
-                FROM function_calls fc
-                JOIN symbols s ON fc.caller_symbol_id = s.symbol_id
-                JOIN files f ON fc.file_id = f.file_id
-                WHERE s.symbol_name = ?
-                ORDER BY fc.callee_name
+                SELECT DISTINCT symbol_name, f.file_path
+                FROM symbol_references r
+                JOIN files f ON r.file_id = f.file_id
+                WHERE context = ? AND reference_type = 'call'
             """,
-                (function_name,),
+                (func_name,),
             )
+            callees = cursor.fetchall()
 
-            callees = [(name, Path(fp).name, line) for name, fp, line in cursor.fetchall()]
-
-            return {"callers": callers, "callees": callees}
-
-    def get_message_handlers(self, message_name: str) -> list[tuple[str, str, int]]:
-        """Find all event handlers for a specific message"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                SELECT f.file_path, s.symbol_name, s.line_number
-                FROM symbols s
-                JOIN files f ON s.file_id = f.file_id
-                WHERE s.symbol_type = 'event_handler'
-                  AND s.symbol_name LIKE ?
-                ORDER BY f.file_path
-            """,
-                (f"%message {message_name}%",),
-            )
-
-            return [(Path(fp).name, name, line) for fp, name, line in cursor.fetchall()]
-
-    def get_message_outputs(self, message_name: str) -> list[tuple[str, str, int]]:
-        """Find all places where a message is output"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                SELECT f.file_path, s.symbol_name, mu.line_number
-                FROM message_usage mu
-                JOIN files f ON mu.file_id = f.file_id
-                LEFT JOIN symbols s ON mu.symbol_id = s.symbol_id
-                WHERE mu.message_name = ? AND mu.usage_type = 'output'
-                ORDER BY f.file_path, mu.line_number
-            """,
-                (message_name,),
-            )
-
-            return [
-                (Path(fp).name, func or "(global)", line) for fp, func, line in cursor.fetchall()
-            ]
-
-    def generate_call_graph_dot(self, output_file: str = "call_graph.dot"):
-        """Generate a GraphViz call graph"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("""
-                SELECT DISTINCT s.symbol_name, fc.callee_name
-                FROM function_calls fc
-                JOIN symbols s ON fc.caller_symbol_id = s.symbol_id
-            """)
-
-            edges = cursor.fetchall()
-
-        with open(output_file, "w") as f:
-            f.write("digraph CallGraph {\n")
-            f.write("  rankdir=LR;\n")
-            f.write("  node [shape=box, style=rounded];\n\n")
-
-            # Add edges
-            for caller, callee in edges:
-                f.write(f'  "{caller}" -> "{callee}";\n')
-
-            f.write("}\n")
-
-        print(f"Call graph written to {output_file}")
-        print(f"Generate image: dot -Tpng {output_file} -o call_graph.png")
-
-
-# Testing and example usage
-if __name__ == "__main__":
-    import sys
-
-    xref = CAPLCrossReferenceBuilder()
-
-    if len(sys.argv) > 1:
-        file_path = sys.argv[1]
-
-        print(f"Building cross-references for: {file_path}")
-        print("=" * 70)
-
-        ref_count = xref.analyze_file_references(file_path)
-        print(f"✓ Found {ref_count} references")
-
-        # Example queries
-        print("\nExample: Find all references to 'msgEngine':")
-        refs = xref.find_all_references("msgEngine")
-        for ref in refs[:10]:  # Limit to 10
-            print(
-                f"  {Path(ref.file_path).name}:{ref.line_number} "
-                f"[{ref.reference_type}] {ref.context[:50]}"
-            )
-
-        if len(refs) > 10:
-            print(f"  ... and {len(refs) - 10} more")
-    else:
-        print("Usage: python script.py <capl_file.can>")
+            return {
+                "name": func_name,
+                "callers": [{"name": c[0], "file": c[1]} for c in callers],
+                "callees": [{"name": c[0], "file": c[1]} for c in callees],
+            }
+        finally:
+            conn.close()

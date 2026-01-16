@@ -7,7 +7,7 @@ import sqlite3
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
+from typing import List, Optional, Dict
 import tree_sitter_c as tsc
 from tree_sitter import Language, Node, Parser, Query, QueryCursor
 
@@ -39,57 +39,63 @@ class CAPLSymbolExtractor:
 
     def _init_database(self):
         """Create required tables if they don't exist"""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS files (
-                    file_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    file_path TEXT UNIQUE NOT NULL,
-                    last_parsed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    parse_success BOOLEAN,
-                    file_hash TEXT
-                )
-            """)
+        conn = sqlite3.connect(self.db_path)
+        try:
+            with conn:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS files (
+                        file_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_path TEXT UNIQUE NOT NULL,
+                        last_parsed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        parse_success BOOLEAN,
+                        file_hash TEXT
+                    )
+                """)
 
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS symbols (
-                    symbol_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    file_id INTEGER NOT NULL,
-                    symbol_name TEXT NOT NULL,
-                    symbol_type TEXT,
-                    line_number INTEGER,
-                    signature TEXT,
-                    scope TEXT,
-                    declaration_position TEXT,
-                    parent_symbol TEXT,
-                    context TEXT,
-                    FOREIGN KEY (file_id) REFERENCES files(file_id)
-                )
-            """)
-            conn.commit()
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS symbols (
+                        symbol_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_id INTEGER NOT NULL,
+                        symbol_name TEXT NOT NULL,
+                        symbol_type TEXT,
+                        line_number INTEGER,
+                        signature TEXT,
+                        scope TEXT,
+                        declaration_position TEXT,
+                        parent_symbol TEXT,
+                        context TEXT,
+                        FOREIGN KEY (file_id) REFERENCES files(file_id)
+                    )
+                """)
+        finally:
+            conn.close()
 
     def _init_type_definitions_table(self):
         """Create table for enum/struct definitions"""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS type_definitions (
-                    type_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    file_id INTEGER NOT NULL,
-                    type_name TEXT NOT NULL,
-                    type_kind TEXT NOT NULL,  -- 'enum' or 'struct'
-                    line_number INTEGER,
-                    members TEXT,  -- JSON array of members
-                    scope TEXT,
-                    FOREIGN KEY (file_id) REFERENCES files(file_id)
-                )
-            """)
+        conn = sqlite3.connect(self.db_path)
+        try:
+            with conn:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS type_definitions (
+                        type_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_id INTEGER NOT NULL,
+                        type_name TEXT NOT NULL,
+                        type_kind TEXT NOT NULL,  -- 'enum' or 'struct'
+                        line_number INTEGER,
+                        members TEXT,  -- JSON array of members
+                        scope TEXT,
+                        FOREIGN KEY (file_id) REFERENCES files(file_id)
+                    )
+                """)
 
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_type_definitions_name 
-                ON type_definitions(type_name)
-            """)
-            conn.commit()
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_type_definitions_name 
+                    ON type_definitions(type_name)
+                """)
+        finally:
+            conn.close()
 
-    def extract_symbols(self, file_path: str) -> list[Symbol]:
+    def extract_symbols(self, file_path: str) -> List[Symbol]:
         """
         Extract all symbols from a CAPL file
 
@@ -127,7 +133,7 @@ class CAPLSymbolExtractor:
 
         return symbols
 
-    def _extract_enum_definitions(self, root: Node, source: str) -> list[Symbol]:
+    def _extract_enum_definitions(self, root: Node, source: str) -> List[Symbol]:
         """
         Extract enum definitions and their members:
         enum NAME { MEMBER1, MEMBER2 };
@@ -170,7 +176,7 @@ class CAPLSymbolExtractor:
 
         return symbols
 
-    def _extract_struct_definitions(self, root: Node, source: str) -> list[Symbol]:
+    def _extract_struct_definitions(self, root: Node, source: str) -> List[Symbol]:
         """
         Extract struct definitions:
         struct NAME { ... };
@@ -197,13 +203,14 @@ class CAPLSymbolExtractor:
 
         return symbols
 
-    def _get_type_kind(self, type_name: str) -> str | None:
+    def _get_type_kind(self, type_name: str) -> Optional[str]:
         """Check if a type name is a known enum/struct"""
         # Check local cache first
         if type_name in self.current_file_types:
             return self.current_file_types[type_name]
 
-        with sqlite3.connect(self.db_path) as conn:
+        conn = sqlite3.connect(self.db_path)
+        try:
             # Check if table exists first to avoid crash on fresh start
             cursor = conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='type_definitions'"
@@ -221,8 +228,12 @@ class CAPLSymbolExtractor:
 
             result = cursor.fetchone()
             return result[0] if result else None
+        except sqlite3.Error:
+            return None
+        finally:
+            conn.close()
 
-    def _extract_forbidden_syntax(self, root: Node, source: str) -> list[Symbol]:
+    def _extract_forbidden_syntax(self, root: Node, source: str) -> List[Symbol]:
         """Detect function declarations and extern keywords"""
         forbidden = []
 
@@ -280,7 +291,7 @@ class CAPLSymbolExtractor:
 
         return forbidden
 
-    def _extract_event_handlers(self, root: Node, source: str) -> list[Symbol]:
+    def _extract_event_handlers(self, root: Node, source: str) -> List[Symbol]:
         """
         Extract CAPL event handlers like 'on message', 'on signal', 'on timer'
         """
@@ -310,7 +321,7 @@ class CAPLSymbolExtractor:
                             symbols.append(event_info)
         return symbols
 
-    def _parse_event_handler(self, first_line: str, node: Node) -> Symbol | None:
+    def _parse_event_handler(self, first_line: str, node: Node) -> Optional[Symbol]:
         line_num = node.start_point[0] + 1
         parts = first_line.split()
         if len(parts) < 2:
@@ -330,7 +341,7 @@ class CAPLSymbolExtractor:
             scope="global",
         )
 
-    def _extract_functions(self, root: Node, source: str) -> list[Symbol]:
+    def _extract_functions(self, root: Node, source: str) -> List[Symbol]:
         symbols = []
         query = Query(
             self.language,
@@ -370,39 +381,43 @@ class CAPLSymbolExtractor:
                         )
         return symbols
 
-    def _extract_variables_block(self, root: Node, source: str) -> list[Symbol]:
+    def _extract_variables_block(self, root: Node, source: str) -> List[Symbol]:
         symbols = []
-        lines = source.split("\n")
-        in_variables_block = False
-        in_inner_block = False
-
-        for i, line in enumerate(lines):
-            stripped = line.strip()
-            if stripped.startswith("variables") and "{" in line:
-                in_variables_block = True
-                continue
-            if in_variables_block and "}" in stripped and not in_inner_block:
-                in_variables_block = False
-                continue
-
-            if in_variables_block:
-                # Detect nested blocks like enum/struct
-                if ("enum" in stripped or "struct" in stripped) and "{" in stripped:
-                    in_inner_block = True
-                    continue
-                if in_inner_block:
-                    if "}" in stripped:
-                        in_inner_block = False
-                    continue
-
-                if stripped and not stripped.startswith("//"):
-                    var_info = self._parse_variable_declaration(stripped, i + 1)
+        # Find the compound_statement that follows the 'variables' ERROR/identifier
+        variables_node = None
+        for i, child in enumerate(root.children):
+            node_text = source[child.start_byte:child.end_byte].strip()
+            if "variables" in node_text and (child.type == "ERROR" or child.type == "identifier"):
+                # The next node should be the block
+                if i + 1 < len(root.children) and root.children[i+1].type == "compound_statement":
+                    variables_node = root.children[i+1]
+                    break
+        
+        if variables_node:
+            for statement in variables_node.children:
+                if statement.type == "declaration":
+                    var_info = self._parse_variable_from_node(statement, source)
                     if var_info:
-                        var_info.scope = "variables_block"
-                        symbols.append(var_info)
+                        symbols.append(Symbol(
+                            name=var_info["name"],
+                            symbol_type=self._get_symbol_type_from_signature(var_info["signature"]),
+                            line_number=statement.start_point[0] + 1,
+                            signature=var_info["signature"],
+                            scope="variables_block"
+                        ))
+                elif statement.type in ("enum_specifier", "struct_specifier"):
+                    # Handle definitions inside variables block (might be nested)
+                    pass # Handled by specialized extractors
+        
         return symbols
 
-    def _parse_variable_declaration(self, line: str, line_num: int) -> Symbol | None:
+    def _get_symbol_type_from_signature(self, signature: str) -> str:
+        if signature.startswith("message "): return "message_variable"
+        if signature.startswith("msTimer "): return "timer"
+        if signature.startswith("signal "): return "signal_variable"
+        return "variable"
+
+    def _parse_variable_declaration(self, line: str, line_num: int) -> Optional[Symbol]:
         line = line.split(";")[0].strip()
         if "//" in line:
             line = line.split("//")[0].strip()
@@ -452,12 +467,20 @@ class CAPLSymbolExtractor:
             if "decl" in captures_dict and "var_name" in captures_dict:
                 for i, decl_node in enumerate(captures_dict["decl"]):
                     if self._is_global_scope(decl_node):
-                        var_name_nodes = captures_dict.get("var_name", [])
-                        if i < len(var_name_nodes):
-                            name_node = var_name_nodes[i]
-                            var_name = source[name_node.start_byte:name_node.end_byte]
-                            if not self._is_in_variables_block(decl_node, source):
-                                symbols.append(Symbol(name=var_name, symbol_type='variable', line_number=decl_node.start_point[0] + 1, signature=source[decl_node.start_byte:decl_node.end_byte].split('\n')[0].strip(), scope='global'))
+                        if not self._is_in_variables_block(decl_node, source):
+                            # Get name and signature
+                            var_name_nodes = captures_dict.get("var_name", [])
+                            if i < len(var_name_nodes):
+                                name_node = var_name_nodes[i]
+                                var_name = source[name_node.start_byte:name_node.end_byte]
+                                signature = source[decl_node.start_byte:decl_node.end_byte].split('\n')[0].strip()
+                                symbols.append(Symbol(
+                                    name=var_name,
+                                    symbol_type='variable',
+                                    line_number=decl_node.start_point[0] + 1,
+                                    signature=signature,
+                                    scope='global'
+                                ))
         return symbols
 
     def _is_global_scope(self, node: Node) -> bool:
@@ -469,14 +492,26 @@ class CAPLSymbolExtractor:
         return True
 
     def _is_in_variables_block(self, node: Node, source: str) -> bool:
-        before_text = source[: node.start_byte]
-        if "variables" not in before_text:
-            return False
-        last_var_pos = before_text.rfind("variables")
-        text_after_var = before_text[last_var_pos:]
-        return text_after_var.count("{") > text_after_var.count("}")
+        # Check if any parent is a compound_statement preceded by 'variables'
+        parent = node.parent
+        while parent:
+            if parent.type == "compound_statement":
+                # Check sibling before this parent
+                idx = -1
+                if parent.parent:
+                    for i, child in enumerate(parent.parent.children):
+                        if child == parent:
+                            idx = i
+                            break
+                    if idx > 0:
+                        prev_sibling = parent.parent.children[idx-1]
+                        prev_text = source[prev_sibling.start_byte:prev_sibling.end_byte].strip()
+                        if "variables" in prev_text:
+                            return True
+            parent = parent.parent
+        return False
 
-    def _extract_all_local_variables(self, root: Node, source: str) -> list[Symbol]:
+    def _extract_all_local_variables(self, root: Node, source: str) -> List[Symbol]:
         all_locals = []
         query = Query(
             self.language,
@@ -495,7 +530,7 @@ class CAPLSymbolExtractor:
                     if i < len(captures_dict["body"]):
                         all_locals.extend(
                             self._analyze_block_body(
-                                captures_dict["body"][i], source, block_info["name"]
+                                captures_dict["body"], source, block_info["name"]
                             )
                         )
         return all_locals
@@ -517,7 +552,7 @@ class CAPLSymbolExtractor:
                         }
         return {"type": "unknown", "name": "(unknown)"}
 
-    def _analyze_block_body(self, block_node: Node, source: str, block_name: str) -> list[Symbol]:
+    def _analyze_block_body(self, block_node: Node, source: str, block_name: str) -> List[Symbol]:
         symbols = []
         first_executable_line = None
         for statement in block_node.children:
@@ -541,7 +576,7 @@ class CAPLSymbolExtractor:
                     first_executable_line = statement.start_point[0] + 1
         return symbols
 
-    def _parse_variable_from_node(self, node: Node, source: str) -> dict | None:
+    def _parse_variable_from_node(self, node: Node, source: str) -> Optional[dict]:
         text = source[node.start_byte : node.end_byte]
         for child in node.children:
             if child.type == "init_declarator":
@@ -556,9 +591,9 @@ class CAPLSymbolExtractor:
                     "name": source[child.start_byte : child.end_byte],
                     "signature": text.strip(),
                 }
-        return self._parse_variable_declaration(text.strip(), 0)
+        return None
 
-    def _extract_type_usages(self, root: Node, source: str) -> list[Symbol]:
+    def _extract_type_usages(self, root: Node, source: str) -> List[Symbol]:
         usages = []
         query = Query(
             self.language,
@@ -607,43 +642,51 @@ class CAPLSymbolExtractor:
         source_text = source_code.decode("utf8")
         tree = self.parser.parse(source_code)
         root = tree.root_node
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                INSERT INTO files (file_path, parse_success)
-                VALUES (?, 1)
-                ON CONFLICT(file_path) DO UPDATE SET last_parsed = CURRENT_TIMESTAMP
-                RETURNING file_id
-            """,
-                (file_path,),
-            )
-            file_id = cursor.fetchone()[0]
-            conn.execute("DELETE FROM symbols WHERE file_id = ?", (file_id,))
-            conn.execute("DELETE FROM type_definitions WHERE file_id = ?", (file_id,))
-            for symbol in symbols:
-                conn.execute(
+        
+        conn = sqlite3.connect(self.db_path)
+        try:
+            with conn:
+                cursor = conn.execute(
                     """
-                    INSERT INTO symbols (file_id, symbol_name, symbol_type, line_number, signature, scope, declaration_position, parent_symbol, context)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO files (file_path, parse_success)
+                    VALUES (?, 1)
+                    ON CONFLICT(file_path) DO UPDATE SET last_parsed = CURRENT_TIMESTAMP
+                    RETURNING file_id
                 """,
-                    (
-                        file_id,
-                        symbol.name,
-                        symbol.symbol_type,
-                        symbol.line_number,
-                        symbol.signature,
-                        symbol.scope,
-                        symbol.declaration_position,
-                        symbol.parent_symbol,
-                        symbol.context,
-                    ),
+                    (file_path,),
                 )
-            self._extract_and_store_type_definitions(file_id, root, source_text, conn)
-            conn.commit()
+                file_id = cursor.fetchone()[0]
+                conn.execute("DELETE FROM symbols WHERE file_id = ?", (file_id,))
+                conn.execute("DELETE FROM type_definitions WHERE file_id = ?", (file_id,))
+                for symbol in symbols:
+                    conn.execute(
+                        """
+                        INSERT INTO symbols (file_id, symbol_name, symbol_type, line_number, signature, scope, declaration_position, parent_symbol, context)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                        (
+                            file_id,
+                            symbol.name,
+                            symbol.symbol_type,
+                            symbol.line_number,
+                            symbol.signature,
+                            symbol.scope,
+                            symbol.declaration_position,
+                            symbol.parent_symbol,
+                            symbol.context,
+                        ),
+                    )
+                self._extract_and_store_type_definitions(file_id, root, source_text, conn)
+        finally:
+            conn.close()
         return len(symbols)
 
     def _extract_and_store_type_definitions(
-        self, file_id: int, root: Node, source: str, conn: sqlite3.Connection
+        self,
+        file_id: int,
+        root: Node,
+        source: str,
+        conn: sqlite3.Connection,
     ):
         query_enum = Query(
             self.language,
@@ -693,8 +736,9 @@ class CAPLSymbolExtractor:
                         ),
                     )
 
-    def find_symbol(self, symbol_name: str, symbol_type: str | None = None) -> list[tuple]:
-        with sqlite3.connect(self.db_path) as conn:
+    def find_symbol(self, symbol_name: str, symbol_type: str | None = None) -> List[tuple]:
+        conn = sqlite3.connect(self.db_path)
+        try:
             if symbol_type:
                 cursor = conn.execute(
                     "SELECT f.file_path, s.symbol_type, s.line_number, s.signature FROM symbols s JOIN files f ON s.file_id = f.file_id WHERE s.symbol_name = ? AND s.symbol_type = ? ORDER BY f.file_path, s.line_number",
@@ -706,44 +750,54 @@ class CAPLSymbolExtractor:
                     (symbol_name,),
                 )
             return cursor.fetchall()
+        finally:
+            conn.close()
 
-    def list_symbols_in_file(self, file_path: str) -> list[tuple]:
+    def list_symbols_in_file(self, file_path: str) -> List[tuple]:
         file_path = str(Path(file_path).resolve())
-        with sqlite3.connect(self.db_path) as conn:
+        conn = sqlite3.connect(self.db_path)
+        try:
             cursor = conn.execute(
                 "SELECT s.symbol_name, s.symbol_type, s.line_number, s.signature FROM symbols s JOIN files f ON s.file_id = f.file_id WHERE f.file_path = ? ORDER BY s.line_number",
                 (file_path,),
             )
             return cursor.fetchall()
+        finally:
+            conn.close()
 
-    def get_event_handlers(self) -> list[tuple]:
-        with sqlite3.connect(self.db_path) as conn:
+    def get_event_handlers(self) -> List[tuple]:
+        conn = sqlite3.connect(self.db_path)
+        try:
             cursor = conn.execute(
                 "SELECT f.file_path, s.symbol_name, s.line_number FROM symbols s JOIN files f ON s.file_id = f.file_id WHERE s.symbol_type = 'event_handler' ORDER BY s.symbol_name, f.file_path"
             )
             return cursor.fetchall()
+        finally:
+            conn.close()
 
 
 def update_database_schema(db_path: str = "aic.db"):
-    with sqlite3.connect(db_path) as conn:
-        cursor = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='symbols'"
-        )
-        if not cursor.fetchone():
-            return
-        cursor = conn.execute("PRAGMA table_info(symbols)")
-        columns = {row[1] for row in cursor.fetchall()}
-        for col in ["signature", "scope", "declaration_position", "parent_symbol", "context"]:
-            if col not in columns:
-                conn.execute(f"ALTER TABLE symbols ADD COLUMN {col} TEXT")
+    conn = sqlite3.connect(db_path)
+    try:
+        with conn:
+            cursor = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='symbols'"
+            )
+            if not cursor.fetchone():
+                return
+            cursor = conn.execute("PRAGMA table_info(symbols)")
+            columns = {row[1] for row in cursor.fetchall()}
+            for col in ["signature", "scope", "declaration_position", "parent_symbol", "context"]:
+                if col not in columns:
+                    conn.execute(f"ALTER TABLE symbols ADD COLUMN {col} TEXT")
 
-        # Check type_definitions table
-        cursor = conn.execute("PRAGMA table_info(type_definitions)")
-        type_cols = {row[1] for row in cursor.fetchall()}
-        if "scope" not in type_cols:
-            conn.execute("ALTER TABLE type_definitions ADD COLUMN scope TEXT")
-
-        conn.commit()
+            # Check type_definitions table
+            cursor = conn.execute("PRAGMA table_info(type_definitions)")
+            type_cols = {row[1] for row in cursor.fetchall()}
+            if "scope" not in type_cols:
+                conn.execute("ALTER TABLE type_definitions ADD COLUMN scope TEXT")
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

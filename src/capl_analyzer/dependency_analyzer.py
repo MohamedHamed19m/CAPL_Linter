@@ -6,7 +6,7 @@ Builds a dependency graph of #include relationships for aic.db
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-
+from typing import Any, Dict, List, Optional, Tuple
 import tree_sitter_c as tsc
 from tree_sitter import Language, Node, Parser, Query, QueryCursor
 
@@ -42,58 +42,60 @@ class CAPLDependencyAnalyzer:
 
     def _init_database(self):
         """Create tables for dependency tracking"""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS files (
-                    file_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    file_path TEXT UNIQUE NOT NULL,
-                    last_parsed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    parse_success BOOLEAN,
-                    file_hash TEXT
-                )
-            """)
+        conn = sqlite3.connect(self.db_path)
+        try:
+            with conn:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS files (
+                        file_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_path TEXT UNIQUE NOT NULL,
+                        last_parsed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        parse_success BOOLEAN,
+                        file_hash TEXT
+                    )
+                """)
 
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS includes (
-                    include_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    source_file_id INTEGER NOT NULL,
-                    included_file_id INTEGER,
-                    include_path TEXT NOT NULL,
-                    line_number INTEGER,
-                    is_resolved BOOLEAN,
-                    FOREIGN KEY (source_file_id) REFERENCES files(file_id),
-                    FOREIGN KEY (included_file_id) REFERENCES files(file_id)
-                )
-            """)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS includes (
+                        include_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        source_file_id INTEGER NOT NULL,
+                        included_file_id INTEGER,
+                        include_path TEXT NOT NULL,
+                        line_number INTEGER,
+                        is_resolved BOOLEAN,
+                        FOREIGN KEY (source_file_id) REFERENCES files(file_id),
+                        FOREIGN KEY (included_file_id) REFERENCES files(file_id)
+                    )
+                """)
 
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS symbols (
-                    symbol_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    file_id INTEGER NOT NULL,
-                    symbol_name TEXT NOT NULL,
-                    symbol_type TEXT,  -- 'function', 'variable', 'message', 'signal'
-                    line_number INTEGER,
-                    FOREIGN KEY (file_id) REFERENCES files(file_id)
-                )
-            """)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS symbols (
+                        symbol_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_id INTEGER NOT NULL,
+                        symbol_name TEXT NOT NULL,
+                        symbol_type TEXT,  -- 'function', 'variable', 'message', 'signal'
+                        line_number INTEGER,
+                        FOREIGN KEY (file_id) REFERENCES files(file_id)
+                    )
+                """)
 
-            # Indexes for fast lookups
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_includes_source 
-                ON includes(source_file_id)
-            """)
+                # Indexes for fast lookups
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_includes_source 
+                    ON includes(source_file_id)
+                """)
 
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_includes_target 
-                ON includes(included_file_id)
-            """)
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_includes_target 
+                    ON includes(included_file_id)
+                """)
 
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_symbols_name 
-                ON symbols(symbol_name)
-            """)
-
-            conn.commit()
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_symbols_name 
+                    ON symbols(symbol_name)
+                """)
+        finally:
+            conn.close()
 
     def extract_includes(self, file_path: str) -> list[IncludeInfo]:
         """
@@ -201,68 +203,69 @@ class CAPLDependencyAnalyzer:
         """
         file_path = str(Path(file_path).resolve())
 
-        with sqlite3.connect(self.db_path) as conn:
-            # Register or update the file
-            cursor = conn.execute(
-                """
-                INSERT INTO files (file_path, parse_success)
-                VALUES (?, 1)
-                ON CONFLICT(file_path) DO UPDATE SET
-                    last_parsed = CURRENT_TIMESTAMP,
-                    parse_success = 1
-                RETURNING file_id
-            """,
-                (file_path,),
-            )
-
-            file_id = cursor.fetchone()[0]
-
-            # Clear old includes for this file
-            conn.execute(
-                """
-                DELETE FROM includes WHERE source_file_id = ?
-            """,
-                (file_id,),
-            )
-
-            # Extract and store includes
-            includes = self.extract_includes(file_path)
-
-            for inc in includes:
-                included_file_id = None
-
-                if inc.is_resolved:
-                    # Register the included file
-                    cursor = conn.execute(
-                        """
-                        INSERT INTO files (file_path, parse_success)
-                        VALUES (?, NULL)
-                        ON CONFLICT(file_path) DO UPDATE SET
-                            last_parsed = last_parsed
-                        RETURNING file_id
-                    """,
-                        (inc.resolved_path,),
-                    )
-                    included_file_id = cursor.fetchone()[0]
-
-                # Store the include relationship
-                conn.execute(
+        conn = sqlite3.connect(self.db_path)
+        try:
+            with conn:
+                # Register or update the file
+                cursor = conn.execute(
                     """
-                    INSERT INTO includes 
-                    (source_file_id, included_file_id, include_path, 
-                     line_number, is_resolved)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO files (file_path, parse_success)
+                    VALUES (?, 1)
+                    ON CONFLICT(file_path) DO UPDATE SET
+                        last_parsed = CURRENT_TIMESTAMP,
+                        parse_success = 1
+                    RETURNING file_id
                 """,
-                    (
-                        file_id,
-                        included_file_id,
-                        inc.included_file,
-                        inc.line_number,
-                        inc.is_resolved,
-                    ),
+                    (file_path,),
                 )
 
-            conn.commit()
+                file_id = cursor.fetchone()[0]
+
+                # Clear old includes for this file
+                conn.execute(
+                    """
+                    DELETE FROM includes WHERE source_file_id = ?
+                """,
+                    (file_id,),
+                )
+
+                # Extract and store includes
+                includes = self.extract_includes(file_path)
+
+                for inc in includes:
+                    included_file_id = None
+
+                    if inc.is_resolved:
+                        # Register the included file
+                        cursor = conn.execute(
+                            """
+                            INSERT INTO files (file_path, parse_success)
+                            VALUES (?, NULL)
+                            ON CONFLICT(file_path) DO UPDATE SET
+                                last_parsed = last_parsed
+                                                    RETURNING file_id
+                                                """,                            (inc.resolved_path,),
+                        )
+                        included_file_id = cursor.fetchone()[0]
+
+                    # Store the include relationship
+                    conn.execute(
+                        """
+                        INSERT INTO includes 
+                        (source_file_id, included_file_id, include_path, 
+                         line_number, is_resolved)
+                        VALUES (?, ?, ?, ?, ?)
+                    """,
+                        (
+                            file_id,
+                            included_file_id,
+                            inc.included_file,
+                            inc.line_number,
+                            inc.is_resolved,
+                        ),
+                    )
+        finally:
+            conn.close()
 
         return file_id
 
@@ -296,7 +299,8 @@ class CAPLDependencyAnalyzer:
         """
         file_path = str(Path(file_path).resolve())
 
-        with sqlite3.connect(self.db_path) as conn:
+        conn = sqlite3.connect(self.db_path)
+        try:
             if not recursive:
                 cursor = conn.execute(
                     """
@@ -331,6 +335,8 @@ class CAPLDependencyAnalyzer:
                 )
 
             return [row[0] for row in cursor.fetchall()]
+        finally:
+            conn.close()
 
     def get_dependents(self, file_path: str) -> list[str]:
         """
@@ -344,7 +350,8 @@ class CAPLDependencyAnalyzer:
         """
         file_path = str(Path(file_path).resolve())
 
-        with sqlite3.connect(self.db_path) as conn:
+        conn = sqlite3.connect(self.db_path)
+        try:
             cursor = conn.execute(
                 """
                 SELECT f1.file_path
@@ -357,6 +364,8 @@ class CAPLDependencyAnalyzer:
             )
 
             return [row[0] for row in cursor.fetchall()]
+        finally:
+            conn.close()
 
     def find_circular_dependencies(self) -> list[list[str]]:
         """
@@ -365,7 +374,8 @@ class CAPLDependencyAnalyzer:
         Returns:
             List of circular dependency chains
         """
-        with sqlite3.connect(self.db_path) as conn:
+        conn = sqlite3.connect(self.db_path)
+        try:
             cursor = conn.execute("""
                 WITH RECURSIVE deps(source_id, target_id, path) AS (
                     SELECT source_file_id, included_file_id, 
@@ -395,6 +405,8 @@ class CAPLDependencyAnalyzer:
                 cycles.append(file_paths)
 
             return cycles
+        finally:
+            conn.close()
 
     def _ids_to_paths(self, conn, file_ids: list[str]) -> list[str]:
         """Convert file IDs to file paths"""
@@ -416,7 +428,8 @@ class CAPLDependencyAnalyzer:
         Args:
             output_file: Path to output .dot file
         """
-        with sqlite3.connect(self.db_path) as conn:
+        conn = sqlite3.connect(self.db_path)
+        try:
             cursor = conn.execute("""
                 SELECT f1.file_path, f2.file_path
                 FROM includes i
@@ -426,6 +439,8 @@ class CAPLDependencyAnalyzer:
             """)
 
             edges = cursor.fetchall()
+        finally:
+            conn.close()
 
         with open(output_file, "w") as f:
             f.write("digraph Dependencies {\n")
@@ -447,14 +462,14 @@ class CAPLDependencyAnalyzer:
 if __name__ == "__main__":
     # Initialize analyzer
     analyzer = CAPLDependencyAnalyzer(
-        db_path="aic.db", search_paths=["/path/to/capl/includes", "/path/to/project/common"]
+        db_path="aic.db", search_paths=["examples", "examples"]
     )
 
     # Analyze a single file
-    file_id = analyzer.analyze_file("AdvancedNode.can")
+    file_id = analyzer.analyze_file("examples/AdvancedNode.can")
 
     # Or analyze an entire directory
-    analyzer.analyze_directory("/path/to/capl/project")
+    analyzer.analyze_directory("examples")
 
     # Query dependencies
     deps = analyzer.get_dependencies("AdvancedNode.can", recursive=True)

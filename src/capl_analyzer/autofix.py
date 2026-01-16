@@ -274,24 +274,31 @@ class AutoFixer:
         return None, None
 
     def _get_parent_function(self, file_path: str, line_number: int) -> str | None:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                SELECT s.parent_symbol FROM symbols s
-                JOIN files f ON s.file_id = f.file_id
-                WHERE f.file_path = ? AND s.line_number = ?
-            """,
-                (str(Path(file_path).resolve()), line_number),
-            )
-            result = cursor.fetchone()
-            return result[0] if result else None
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT s.parent_symbol FROM symbols s
+                    JOIN files f ON s.file_id = f.file_id
+                    WHERE f.file_path = ? AND s.line_number = ?
+                """,
+                    (str(Path(file_path).resolve()), line_number),
+                )
+                result = cursor.fetchone()
+                return result[0] if result else None
+        except sqlite3.Error:
+            return None
 
     def _find_function_start(self, lines: list[str], func_name: str) -> int | None:
+        if not func_name:
+            return None
         clean_name = func_name
         if clean_name.startswith("testcase "):
-            clean_name = clean_name.replace("testcase ", "")
+            clean_name = clean_name.replace("testcase ", "").strip()
         elif clean_name.startswith("on "):
             pass
+        
+        # Exact match for function name in signature
         for i, line in enumerate(lines):
             if clean_name in line and ("(" in line or "{" in line):
                 return i
