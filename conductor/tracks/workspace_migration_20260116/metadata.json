@@ -1,0 +1,8 @@
+{
+  "track_id": "workspace_migration_20260116",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-01-17T00:24:00Z",
+  "updated_at": "2026-01-17T00:24:00Z",
+  "description": "Restructure CAPL Analyzer from a single package into a UV workspace with multiple independent packages, enabling modular development, isolated testing, and independent versioning."
+}
