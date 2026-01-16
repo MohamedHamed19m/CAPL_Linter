@@ -45,11 +45,23 @@ This plan outlines the steps to implement and refine the core linting rules and 
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Forbidden Syntax Detection' (Protocol in workflow.md)
 
 ## Phase 4: Integration and UX Refinement
-
+ 
 - [ ] Task: Refine iterative auto-fix loop and CLI output
     - [ ] Write tests for the iterative fix loop in `linter.py` to ensure it converges safely
     - [ ] Improve report formatting and transparency of auto-fix actions in `linter.py`
     - [ ] Ensure all public methods are documented and type hints are comprehensive
     - [ ] Verify project-wide consistency and perform final verification run on all examples
     - [ ] Verify final code coverage for the entire track meets >80% requirement
+- [ ] Task: Implement Pydantic models for external interface
+    - [ ] Add pydantic>=2.0.0 to pyproject.toml
+    - [ ] Create LintIssue(BaseModel) for report output
+    - [ ] Create LinterConfig(BaseModel) for user configuration
+    - [ ] Add conversion: dataclass → Pydantic for final output
+    - [ ] Implement --format json using Pydantic serialization
+    - [ ] Generate JSON schema for CI/CD integration
+    - [ ] Write validation tests for config edge cases
+- [ ] Task: Bridge internal dataclasses to external Pydantic models
+    - [ ] Create converter: internal_issue_to_lint_issue()
+    - [ ] Ensure zero validation overhead during core analysis
+    - [ ] Validate only at serialization boundary
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Integration and UX Refinement' (Protocol in workflow.md)

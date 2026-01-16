@@ -23,6 +23,7 @@ classifiers = [
 dependencies = [
     "tree-sitter>=0.21.0",
     "tree-sitter-c>=0.21.0",
+    "pydantic>=2.0.0",
 ]
 
 [project.optional-dependencies]

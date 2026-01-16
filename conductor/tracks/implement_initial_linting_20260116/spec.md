@@ -33,12 +33,27 @@ This track will cover:
     *   **Auto-Fix:** Move the `enum` or `struct` definition into the `variables {}` block.
 
 ### 3.2. Error/Warning Reporting
-*   Generate clear and actionable error/warning messages with suggestions for manual correction where auto-fix is not applicable or not implemented.
+*   Generate clear and actionable error/warning messages following the **Balanced Technical** prose style defined in `product-guidelines.md`:
+    *   **Format:** `❌ ERROR (Line X): [rule-id]`
+    *   **Content:** Precise description + actionable suggestion
+    *   **Indicators:** Auto-fixable status, CAPL specification references
+*   **Example:**
+❌ ERROR (Line 25): variable-outside-block
+   Variable 'badVar' declared outside 'variables {}' block
+   💡 Move 'badVar' declaration into the variables {} block
+   🔧 Auto-fixable
+
 
 ### 3.3. Integration
 *   Ensure seamless integration with the existing `capl-lint` CLI.
 *   Leverage the `symbol_extractor` and internal SQLite database (`aic.db`) for efficient analysis.
-
+*   **Output Formats (Phase 4):** 
+    *   Human-readable text (default)
+    *   JSON format (`--format json`)
+*   **Progressive Disclosure:**
+    *   Brief summary by default
+    *   Detailed output with `--verbose` flag
+    *   CAPL specification references in detailed mode
 ## 4. Non-Goals
 
 *   Implementing all possible CAPL linting rules.
@@ -51,3 +66,32 @@ This track will cover:
 *   **Tree-sitter:** AST parsing for precise rule detection.
 *   **SQLite:** Database for storing extracted symbols and type definitions.
 *   **Iterative Auto-Fix:** The auto-fix system will operate in an iterative manner, applying one type of fix at a time and re-analyzing the file, ensuring safety and correctness.
+*   **Data Architecture:**
+    *   **Internal Engine (Phases 1-3):** Uses Python `dataclasses` for high-performance symbol representation and AST traversal. No runtime validation overhead.
+    *   **External Interface (Phase 4):** Uses `pydantic` models for validated CLI output, JSON serialization, and configuration handling.
+    *   **Bridge Layer:** Converts internal dataclass representations to validated Pydantic models only at serialization boundaries.
+
+## 6. Quality Standards
+
+*   **Test Coverage:** Minimum 80% code coverage across all phases
+    *   Phase 1-3 (core engine): 80%+ recommended
+    *   Phase 4 (CLI/integration): 70%+ acceptable
+*   **Validation:**
+    *   Real-world CAPL file testing before phase sign-off    
+
+
+## 7. Dependencies
+
+### Phase 1-3 (Core Engine)
+*   `tree-sitter>=0.25.2` - AST parsing
+*   `tree-sitter-c>=0.24.1` - C grammar for CAPL
+*   No additional dependencies (uses built-in `dataclasses`)
+
+### Phase 4 (External Interface)
+*   `pydantic>=2.0.0` - Validation and serialization
+
+### Development
+*   `pytest>=7.0.0` - Testing framework
+*   `pytest-cov>=4.0.0` - Coverage reporting
+*   `ruff>=0.1.0` - Linting and formatting
+*   `mypy>=1.0.0` - Type checking    
