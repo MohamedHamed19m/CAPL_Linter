@@ -2,24 +2,24 @@
 Comprehensive test and query interface for CAPL cross-reference system
 """
 
-from pathlib import Path 
 import sqlite3
+from pathlib import Path
 
 
 def test_cross_references(file_path: str = "MyNode.can"):
     """Test cross-reference extraction"""
     from capl_analyzer.cross_reference import CAPLCrossReferenceBuilder
-    
+
     print("=" * 70)
     print("BUILDING CROSS-REFERENCES")
     print("=" * 70)
-    
+
     xref = CAPLCrossReferenceBuilder()
-    
+
     print(f"\n📝 Analyzing {file_path}...")
     ref_count = xref.analyze_file_references(file_path)
     print(f"✓ Found {ref_count} symbol references")
-    
+
     return xref
 
 
@@ -28,15 +28,15 @@ def query_references(xref, symbol_name: str):
     print(f"\n{'=' * 70}")
     print(f"REFERENCES TO: {symbol_name}")
     print("=" * 70)
-    
+
     refs = xref.find_all_references(symbol_name)
-    
+
     if not refs:
         print(f"  No references found for '{symbol_name}'")
         return
-    
+
     print(f"\nFound {len(refs)} reference(s):\n")
-    
+
     # Group by file
     by_file = {}
     for ref in refs:
@@ -44,18 +44,17 @@ def query_references(xref, symbol_name: str):
         if file_name not in by_file:
             by_file[file_name] = []
         by_file[file_name].append(ref)
-    
+
     for file_name, file_refs in sorted(by_file.items()):
         print(f"📁 {file_name}")
         for ref in sorted(file_refs, key=lambda r: r.line_number):
-            ref_type_icon = {
-                'call': '📞',
-                'usage': '🔍',
-                'assignment': '✏️',
-                'output': '📤'
-            }.get(ref.reference_type, '•')
-            
-            print(f"  {ref_type_icon} Line {ref.line_number:4d} [{ref.reference_type:10s}] {ref.context[:50]}")
+            ref_type_icon = {"call": "📞", "usage": "🔍", "assignment": "✏️", "output": "📤"}.get(
+                ref.reference_type, "•"
+            )
+
+            print(
+                f"  {ref_type_icon} Line {ref.line_number:4d} [{ref.reference_type:10s}] {ref.context[:50]}"
+            )
 
 
 def show_call_graph(xref, function_name: str):
@@ -63,24 +62,24 @@ def show_call_graph(xref, function_name: str):
     print(f"\n{'=' * 70}")
     print(f"CALL GRAPH FOR: {function_name}")
     print("=" * 70)
-    
+
     graph = xref.get_call_graph(function_name)
-    
+
     # Who calls this function?
-    if graph['callers']:
+    if graph["callers"]:
         print(f"\n📥 Called by ({len(graph['callers'])} caller(s)):")
-        for caller, file, line in graph['callers']:
+        for caller, file, line in graph["callers"]:
             print(f"  ← {caller:30s} ({file}:{line})")
     else:
-        print(f"\n📥 Not called by any tracked function (might be entry point)")
-    
+        print("\n📥 Not called by any tracked function (might be entry point)")
+
     # What does this function call?
-    if graph['callees']:
+    if graph["callees"]:
         print(f"\n📤 Calls ({len(graph['callees'])} function(s)):")
-        for callee, file, line in graph['callees']:
+        for callee, file, line in graph["callees"]:
             print(f"  → {callee:30s} ({file}:{line})")
     else:
-        print(f"\n📤 Does not call any tracked functions")
+        print("\n📤 Does not call any tracked functions")
 
 
 def show_message_analysis(xref, message_name: str):
@@ -88,7 +87,7 @@ def show_message_analysis(xref, message_name: str):
     print(f"\n{'=' * 70}")
     print(f"MESSAGE ANALYSIS: {message_name}")
     print("=" * 70)
-    
+
     # Find handlers
     handlers = xref.get_message_handlers(message_name)
     if handlers:
@@ -97,7 +96,7 @@ def show_message_analysis(xref, message_name: str):
             print(f"  {file}:{line} → {handler}")
     else:
         print(f"\n📨 No event handlers found for {message_name}")
-    
+
     # Find outputs
     outputs = xref.get_message_outputs(message_name)
     if outputs:
@@ -113,7 +112,7 @@ def inspect_reference_database():
     print("\n" + "=" * 70)
     print("CROSS-REFERENCE DATABASE INSPECTION")
     print("=" * 70)
-    
+
     with sqlite3.connect("aic.db") as conn:
         # Symbol references count
         cursor = conn.execute("""
@@ -122,11 +121,11 @@ def inspect_reference_database():
             GROUP BY reference_type
             ORDER BY count DESC
         """)
-        
+
         print("\n📊 References by Type:")
         for ref_type, count in cursor.fetchall():
             print(f"  {ref_type:15s}: {count:4d}")
-        
+
         # Most referenced symbols
         cursor = conn.execute("""
             SELECT symbol_name, COUNT(*) as count
@@ -135,11 +134,11 @@ def inspect_reference_database():
             ORDER BY count DESC
             LIMIT 10
         """)
-        
+
         print("\n🔥 Top 10 Most Referenced Symbols:")
         for i, (symbol, count) in enumerate(cursor.fetchall(), 1):
             print(f"  {i:2d}. {symbol:25s}: {count:3d} references")
-        
+
         # Function call statistics
         cursor = conn.execute("""
             SELECT COUNT(DISTINCT caller_symbol_id) as callers,
@@ -147,10 +146,10 @@ def inspect_reference_database():
                    COUNT(*) as total_calls
             FROM function_calls
         """)
-        
+
         row = cursor.fetchone()
         if row:
-            print(f"\n📞 Call Graph Statistics:")
+            print("\n📞 Call Graph Statistics:")
             print(f"  Functions that call others: {row[0]}")
             print(f"  Unique functions called:    {row[1]}")
             print(f"  Total call sites:           {row[2]}")
@@ -234,10 +233,10 @@ void LogError(char msg[]) {
   }
 }
 """
-    
-    with open("XRefTest.can", 'w') as f:
+
+    with open("XRefTest.can", "w") as f:
         f.write(content)
-    
+
     print("✓ Created XRefTest.can for comprehensive testing")
     return "XRefTest.can"
 
@@ -245,43 +244,43 @@ void LogError(char msg[]) {
 def run_comprehensive_analysis():
     """Run a full analysis showing all features"""
     import sys
-    
+
     # Create test file if needed
     if len(sys.argv) > 1:
         file_path = sys.argv[1]
     else:
         print("Creating comprehensive test file...\n")
         file_path = create_comprehensive_test()
-    
+
     # Build cross-references
     xref = test_cross_references(file_path)
-    
+
     # Inspect database
     inspect_reference_database()
-    
+
     # Example queries
     print("\n" + "=" * 70)
     print("EXAMPLE QUERIES")
     print("=" * 70)
-    
+
     # Query 1: Variable references
     query_references(xref, "gCounter")
-    
+
     # Query 2: Function calls
     query_references(xref, "LogWarning")
-    
+
     # Query 3: Call graph
     show_call_graph(xref, "UpdateEngine")
-    
+
     # Query 4: Message analysis
     show_message_analysis(xref, "msgEngine")
-    
+
     # Generate visualization
     print("\n" + "=" * 70)
     print("GENERATING VISUALIZATIONS")
     print("=" * 70)
     xref.generate_call_graph_dot("call_graph.dot")
-    
+
     print("\n" + "=" * 70)
     print("✅ ANALYSIS COMPLETE")
     print("=" * 70)
@@ -295,9 +294,9 @@ def run_comprehensive_analysis():
 def interactive_query():
     """Interactive query interface"""
     from capl_analyzer.cross_reference import CAPLCrossReferenceBuilder
-    
+
     xref = CAPLCrossReferenceBuilder()
-    
+
     print("\n" + "=" * 70)
     print("INTERACTIVE CROSS-REFERENCE QUERY")
     print("=" * 70)
@@ -308,21 +307,21 @@ def interactive_query():
     print("  stats             - Show database statistics")
     print("  quit              - Exit")
     print()
-    
+
     while True:
         try:
             cmd = input("\nQuery> ").strip()
-            
+
             if not cmd or cmd == "quit":
                 break
-            
+
             parts = cmd.split(maxsplit=1)
             if len(parts) < 1:
                 continue
-            
+
             command = parts[0].lower()
             arg = parts[1] if len(parts) > 1 else ""
-            
+
             if command == "refs" and arg:
                 query_references(xref, arg)
             elif command == "calls" and arg:
@@ -333,18 +332,18 @@ def interactive_query():
                 inspect_reference_database()
             else:
                 print("Unknown command or missing argument")
-        
+
         except KeyboardInterrupt:
             break
         except Exception as e:
             print(f"Error: {e}")
-    
+
     print("\nGoodbye!")
 
 
 if __name__ == "__main__":
     import sys
-    
+
     if len(sys.argv) > 1 and sys.argv[1] == "interactive":
         interactive_query()
     else:

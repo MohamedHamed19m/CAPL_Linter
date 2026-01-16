@@ -10,10 +10,10 @@ This package provides:
 
 __version__ = "0.1.0"
 
-from .dependency_analyzer import CAPLDependencyAnalyzer
-from .symbol_extractor import CAPLSymbolExtractor
 from .cross_reference import CAPLCrossReferenceBuilder
+from .dependency_analyzer import CAPLDependencyAnalyzer
 from .linter import CAPLLinter, LintIssue, Severity
+from .symbol_extractor import CAPLSymbolExtractor
 
 __all__ = [
     "CAPLDependencyAnalyzer",

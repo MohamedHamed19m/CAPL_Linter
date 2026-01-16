@@ -18,8 +18,8 @@ variables {
   struct Point gPoint;
 
   // Incorrect usages (Missing keyword)
-  STATUS gBadStatus;       // ERROR: missing-enum-keyword
-  Point gBadPoint;         // ERROR: missing-struct-keyword
+  enum STATUS gBadStatus;       // ERROR: missing-enum-keyword
+  struct Point gBadPoint;         // ERROR: missing-struct-keyword
 }
 /*@@end*/
 
