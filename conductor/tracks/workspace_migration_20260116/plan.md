@@ -55,10 +55,10 @@
 
 ## Phase 4: Extract Linter Package
 
-- [ ] Task: Configure `capl-linter` package
-    - [ ] Update `packages/capl-linter/pyproject.toml` with tree-sitter and symbol-db dependencies
-    - [ ] Establish package internal structure (`engine.py`, `autofix.py`, `models.py`, `registry.py`, `rules/`)
-- [ ] Task: Define linter data structures
+- [x] Task: Configure `capl-linter` package
+    - [x] Update `packages/capl-linter/pyproject.toml` with tree-sitter and symbol-db dependencies
+    - [x] Establish package internal structure (`engine.py`, `autofix.py`, `models.py`, `registry.py`, `rules/`)
+- [~] Task: Define linter data structures
     - [ ] Define `InternalIssue` and `AutoFixAction` dataclasses in `models.py`
 - [ ] Task: Extract linting rules and engine (TDD)
     - [ ] Move rules to split modules in `rules/` (variable, type, syntax, style)
