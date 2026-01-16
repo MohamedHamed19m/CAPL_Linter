@@ -22,18 +22,18 @@
 
 ## Phase 2: Extract Tree-Sitter Package
 
-- [ ] Task: Configure `capl-tree-sitter` package
-    - [ ] Update `packages/capl-tree-sitter/pyproject.toml` with `tree-sitter` dependencies
-    - [ ] Establish package internal structure (`parser.py`, `ast_walker.py`, `node_types.py`, `queries.py`)
-- [ ] Task: Extract parsing logic (TDD)
-    - [ ] Define `ASTNode`, `ParseResult`, and `NodeMatch` dataclasses in `node_types.py`
-    - [ ] Create `CAPLParser` class in `parser.py` (migrated from `symbol_extractor.py`)
-    - [ ] Create `ASTWalker` for tree traversal and `queries.py` for tree-sitter helpers
-    - [ ] Write failing parsing tests in `packages/capl-tree-sitter/tests/`
-    - [ ] Implement/Refactor logic to pass tests and verify >85% coverage
-- [ ] Task: Test workspace dependency
-    - [ ] Verify root-level import: `from capl_tree_sitter import CAPLParser`
-    - [ ] Test package isolation: `uv run --package capl-tree-sitter pytest`
+- [x] Task: Configure `capl-tree-sitter` package
+    - [x] Update `packages/capl-tree-sitter/pyproject.toml` with `tree-sitter` dependencies
+    - [x] Establish package internal structure (`parser.py`, `ast_walker.py`, `node_types.py`, `queries.py`)
+- [x] Task: Extract parsing logic (TDD)
+    - [x] Define `ASTNode`, `ParseResult`, and `NodeMatch` dataclasses in `node_types.py`
+    - [x] Create `CAPLParser` class in `parser.py` (migrated from `symbol_extractor.py`)
+    - [x] Create `ASTWalker` for tree traversal and `queries.py` for tree-sitter helpers
+    - [x] Write failing parsing tests in `packages/capl-tree-sitter/tests/`
+    - [x] Implement/Refactor logic to pass tests and verify >85% coverage
+- [x] Task: Test workspace dependency
+    - [x] Verify root-level import: `from capl_tree_sitter import CAPLParser`
+    - [x] Test package isolation: `uv run --package capl-tree-sitter pytest`
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Tree-Sitter Package' (Protocol in workflow.md)
 
 ## Phase 3: Extract Symbol Database Package
