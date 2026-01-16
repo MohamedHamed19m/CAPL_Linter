@@ -648,11 +648,15 @@ class CAPLSymbolExtractor:
         return expected_keyword in text_before.split()
 
     def store_symbols(self, file_path: str) -> int:
+        """Extract symbols and store them in the database with content hashing"""
+        import hashlib
         file_path = str(Path(file_path).resolve())
-        symbols = self.extract_symbols(file_path)
         
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             source_code = f.read()
+        
+        file_hash = hashlib.md5(source_code).hexdigest()
+        symbols = self.extract_symbols(file_path)
         source_text = source_code.decode("utf8")
         tree = self.parser.parse(source_code)
         root = tree.root_node
@@ -662,12 +666,14 @@ class CAPLSymbolExtractor:
             with conn:
                 cursor = conn.execute(
                     """
-                    INSERT INTO files (file_path, parse_success)
-                    VALUES (?, 1)
-                    ON CONFLICT(file_path) DO UPDATE SET last_parsed = CURRENT_TIMESTAMP
+                    INSERT INTO files (file_path, parse_success, file_hash)
+                    VALUES (?, 1, ?)
+                    ON CONFLICT(file_path) DO UPDATE SET 
+                        last_parsed = CURRENT_TIMESTAMP,
+                        file_hash = excluded.file_hash
                     RETURNING file_id
                 """,
-                    (file_path,),
+                    (file_path, file_hash),
                 )
                 file_id = cursor.fetchone()[0]
                 conn.execute("DELETE FROM symbols WHERE file_id = ?", (file_id,))

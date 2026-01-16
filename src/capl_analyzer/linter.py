@@ -64,20 +64,30 @@ class CAPLLinter:
     def _ensure_file_analyzed(self, file_path: str, force: bool = False) -> None:
         """
         Ensure the file has been analyzed and symbols/refs are in DB.
+        Uses content hashing to detect changes.
         
         Args:
             file_path: Absolute path to the CAPL file
-            force: If True, re-analyze even if already in DB
+            force: If True, re-analyze even if hash matches
         """
         from .symbol_extractor import CAPLSymbolExtractor
         from .cross_reference import CAPLCrossReferenceBuilder
         from .dependency_analyzer import CAPLDependencyAnalyzer
+        import hashlib
 
         extractor = CAPLSymbolExtractor(self.db_path)
         xref = CAPLCrossReferenceBuilder(self.db_path)
         dep_analyzer = CAPLDependencyAnalyzer(self.db_path)
 
         file_needs_analysis = True
+        file_path_abs = str(Path(file_path).resolve())
+
+        # Calculate current hash
+        try:
+            with open(file_path_abs, "rb") as f:
+                current_hash = hashlib.md5(f.read()).hexdigest()
+        except OSError:
+            return
 
         if not force:
             try:
@@ -85,26 +95,27 @@ class CAPLLinter:
                 try:
                     cursor = conn.execute(
                         """
-                        SELECT file_id FROM files 
+                        SELECT file_id, file_hash FROM files 
                         WHERE file_path = ?
                     """,
-                        (str(Path(file_path).resolve()),),
+                        (file_path_abs,),
                     )
 
                     result = cursor.fetchone()
 
                     if result:
-                        file_id = result[0]
-                        cursor = conn.execute(
-                            """
-                            SELECT COUNT(*) FROM symbols WHERE file_id = ?
-                        """,
-                            (file_id,),
-                        )
-                        symbol_count = cursor.fetchone()[0]
+                        file_id, stored_hash = result
+                        if stored_hash == current_hash:
+                            cursor = conn.execute(
+                                """
+                                SELECT COUNT(*) FROM symbols WHERE file_id = ?
+                            """,
+                                (file_id,),
+                            )
+                            symbol_count = cursor.fetchone()[0]
 
-                        if symbol_count > 0:
-                            file_needs_analysis = False
+                            if symbol_count > 0:
+                                file_needs_analysis = False
                 finally:
                     conn.close()
             except (sqlite3.OperationalError, sqlite3.DatabaseError):
