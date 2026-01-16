@@ -59,7 +59,7 @@ This project uses `uv` for dependency management and execution.
 
 ## Development Conventions
 
-*   **Code Style:** The project uses `ruff` and `black` (implied by `pyproject.toml` config) for formatting and linting Python code. Ensure code is typed and formatted before committing.
+*   **Code Style:** The project uses `ruff` and `ruff format` (implied by `pyproject.toml` config) for formatting and linting Python code. Ensure code is typed and formatted before committing.
 *   **Database Schema:** The SQLite schema is defined in `symbol_extractor.py` and other modules. When adding new symbol types or features, ensure the schema `CREATE TABLE` and `INSERT` statements are updated.
 *   **Auto-Fix Strategy:** Auto-fixes are implemented in `autofix.py`. Complex fixes that shift line numbers (like moving variables) are handled iteratively by the linter loop to ensuring safety.
 *   **Parsing:** All parsing is done via `tree-sitter`. Do not use regex for parsing complex code structures; rely on the AST.
