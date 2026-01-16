@@ -36,6 +36,17 @@ class CAPLCrossReferenceBuilder:
         conn = sqlite3.connect(self.db_path)
         try:
             with conn:
+                # Ensure files table exists as other tables depend on it
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS files (
+                        file_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_path TEXT UNIQUE NOT NULL,
+                        last_parsed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        parse_success BOOLEAN,
+                        file_hash TEXT
+                    )
+                """)
+
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS symbol_references (
                         ref_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -196,13 +207,26 @@ class CAPLCrossReferenceBuilder:
                     col = node.start_point[1]
                     context = self._get_enclosing_function(node, source)
 
-                    # Determine if it's an assignment
+                    # Determine if it's an assignment or output
                     ref_type = "usage"
-                    if node.parent and node.parent.type == "assignment_expression":
-                        # Check if it's the left side
-                        left_node = node.parent.child_by_field_name("left")
-                        if left_node == node:
-                            ref_type = "assignment"
+                    curr = node
+                    while curr and curr.parent:
+                        if curr.parent.type == "assignment_expression":
+                            left_node = curr.parent.child_by_field_name("left")
+                            if left_node == curr:
+                                ref_type = "assignment"
+                            break
+                        if curr.parent.type == "argument_list":
+                            # Check if this is an output() call
+                            grandparent = curr.parent.parent
+                            if grandparent and grandparent.type == "call_expression":
+                                func_node = grandparent.child_by_field_name("function")
+                                if func_node and source[func_node.start_byte:func_node.end_byte] == "output":
+                                    ref_type = "output"
+                            break
+                        if curr.parent.type in ("declaration", "init_declarator"):
+                            break
+                        curr = curr.parent
 
                     refs.append(
                         SymbolReference(

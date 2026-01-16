@@ -1,5 +1,6 @@
 
 import pytest
+import json
 from pathlib import Path
 from capl_analyzer.linter import CAPLLinter, Severity
 
@@ -148,4 +149,53 @@ def test_autofix_variable_mid_block(tmp_path):
     
     # Verify closing brace is still at the end
     assert lines[-1].strip() == "}" or lines[-2].strip() == "}"
+
+def test_autofix_extern_keyword(tmp_path):
+    """
+    Test auto-fixing of forbidden 'extern' keyword.
+    """
+    code = """extern int gExternal;
+"""
+    test_file = tmp_path / "test_extern.can"
+    test_file.write_text(code)
+    
+    db_path = str(tmp_path / "test.db")
+    linter = CAPLLinter(db_path=db_path)
+    issues = linter.analyze_file(str(test_file))
+    
+    from capl_analyzer.autofix import AutoFixer
+    fixer = AutoFixer(db_path=db_path)
+    
+    rule_issues = [i for i in issues if i.rule_id == "extern-keyword"]
+    assert len(rule_issues) == 1
+    
+    fixed_content = fixer.apply_fixes(str(test_file), rule_issues)
+    
+    assert "extern" not in fixed_content
+    assert "int gExternal;" in fixed_content
+
+def test_json_output_format(tmp_path):
+    """
+    Test that the linter can produce JSON output.
+    """
+    code = "int invalid = 0;"
+    test_file = tmp_path / "test_json.can"
+    test_file.write_text(code)
+    
+    db_path = str(tmp_path / "test.db")
+    linter = CAPLLinter(db_path=db_path)
+    issues = linter.analyze_file(str(test_file))
+    
+    json_report = linter.generate_report(issues, format="json")
+    data = json.loads(json_report)
+    
+    assert isinstance(data, list)
+    assert len(data) > 0
+    # Find the variable-outside-block issue specifically
+    target_issue = next((i for i in data if i["rule_id"] == "variable-outside-block"), None)
+    assert target_issue is not None
+    assert target_issue["severity"] == "ERROR"
+
+
+
 

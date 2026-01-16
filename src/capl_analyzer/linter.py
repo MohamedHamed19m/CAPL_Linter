@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import List, Dict, Set, Optional
 from dataclasses import dataclass
 from enum import Enum
+import json
+from .models import LintIssue as PydanticLintIssue, Severity as PydanticSeverity
 
 
 class Severity(Enum):
@@ -33,16 +35,40 @@ class LintIssue:
     suggestion: Optional[str] = None
     auto_fixable: bool = False
 
+    def to_pydantic(self) -> PydanticLintIssue:
+        return PydanticLintIssue(
+            severity=PydanticSeverity(self.severity.value),
+            file_path=self.file_path,
+            line_number=self.line_number,
+            column=self.column,
+            rule_id=self.rule_id,
+            message=self.message,
+            suggestion=self.suggestion,
+            auto_fixable=self.auto_fixable
+        )
+
 
 class CAPLLinter:
     """Static analyzer for CAPL code"""
 
     def __init__(self, db_path: str = "aic.db"):
+        """
+        Initialize the linter.
+        
+        Args:
+            db_path: Path to the SQLite database
+        """
         self.db_path = db_path
         self.issues: List[LintIssue] = []
 
-    def _ensure_file_analyzed(self, file_path: str, force: bool = False):
-        """Ensure the file has been analyzed and symbols/refs are in DB"""
+    def _ensure_file_analyzed(self, file_path: str, force: bool = False) -> None:
+        """
+        Ensure the file has been analyzed and symbols/refs are in DB.
+        
+        Args:
+            file_path: Absolute path to the CAPL file
+            force: If True, re-analyze even if already in DB
+        """
         from .symbol_extractor import CAPLSymbolExtractor
         from .cross_reference import CAPLCrossReferenceBuilder
         from .dependency_analyzer import CAPLDependencyAnalyzer
@@ -55,7 +81,8 @@ class CAPLLinter:
 
         if not force:
             try:
-                with sqlite3.connect(self.db_path) as conn:
+                conn = sqlite3.connect(self.db_path)
+                try:
                     cursor = conn.execute(
                         """
                         SELECT file_id FROM files 
@@ -78,6 +105,8 @@ class CAPLLinter:
 
                         if symbol_count > 0:
                             file_needs_analysis = False
+                finally:
+                    conn.close()
             except (sqlite3.OperationalError, sqlite3.DatabaseError):
                 file_needs_analysis = True
 
@@ -87,7 +116,16 @@ class CAPLLinter:
             dep_analyzer.analyze_file(file_path)
 
     def analyze_file(self, file_path: str, force: bool = False) -> List[LintIssue]:
-        """Run all lint checks on a file"""
+        """
+        Run all lint checks on a file.
+        
+        Args:
+            file_path: Path to the file to analyze
+            force: If True, re-analyze file before checking rules
+            
+        Returns:
+            List of detected issues sorted by line number
+        """
         self.issues = []
         file_path = str(Path(file_path).resolve())
 
@@ -110,6 +148,7 @@ class CAPLLinter:
         self._check_global_type_definitions(file_path)
 
         return sorted(self.issues, key=lambda x: (x.file_path, x.line_number))
+
 
     def _check_global_type_definitions(self, file_path: str):
         """
@@ -658,10 +697,15 @@ class CAPLLinter:
                         )
                     )
 
-    def generate_report(self, issues: Optional[List[LintIssue]] = None) -> str:
+    def generate_report(self, issues: Optional[List[LintIssue]] = None, format: str = "text") -> str:
         """Generate a formatted report of issues"""
         if issues is None:
             issues = self.issues
+        
+        if format == "json":
+            pydantic_issues = [i.to_pydantic() for i in issues]
+            return json.dumps([i.model_dump() for i in pydantic_issues], indent=2)
+
         if not issues:
             return "✅ No issues found!\n"
         by_severity = {s: [] for s in Severity}
@@ -714,6 +758,9 @@ def main():
     parser.add_argument(
         "--quiet", "-q", action="store_true", help="Only show the report, not progress messages"
     )
+    parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format (default: text)"
+    )
     parser.add_argument("--fix", action="store_true", help="Automatically fix issues")
     parser.add_argument(
         "--fix-dry-run",
@@ -724,11 +771,12 @@ def main():
 
     args = parser.parse_args()
     linter = CAPLLinter(db_path=args.db)
+    all_issues = []
 
     if args.project:
         if not args.quiet:
             print("Analyzing entire project...")
-        issues = linter.analyze_project()
+        all_issues = linter.analyze_project()
     elif args.files:
         if not args.quiet:
             print(f"Analyzing {len(args.files)} file(s)...")
@@ -739,38 +787,36 @@ def main():
             file_path_abs = str(Path(file_path).resolve())
             max_passes = 10
             passes = 0
-
+            last_file_issues = []
+            
             while passes < max_passes:
                 passes += 1
                 try:
                     # Analyze file (force re-analysis if we are in fix mode after first pass)
-                    file_issues = linter.analyze_file(file_path, force=(passes > 1))
-
+                    last_file_issues = linter.analyze_file(file_path, force=(passes > 1))
+                    
                     if not (args.fix or args.fix_dry_run):
                         # Not in fix mode, just collect and move to next file
-                        if passes == 1:
-                            linter.issues.extend(file_issues)
                         break
-
+                    
                     # Fix mode
-                    fixable = [i for i in file_issues if i.auto_fixable]
+                    fixable = [i for i in last_file_issues if i.auto_fixable]
                     if args.fix_only:
                         fixable = [i for i in fixable if i.rule_id in args.fix_only]
-
+                    
                     if not fixable:
                         break
-
+                    
                     if args.fix_dry_run:
                         print(f"\n📝 {Path(file_path).name}: {len(fixable)} fixable issues")
                         for issue in fixable:
                             print(f"  Would fix: Line {issue.line_number} [{issue.rule_id}]")
-                        break  # Only one pass for dry run
-
+                        break # Only one pass for dry run
+                    
                     # Apply fix for ONE rule type to stay safe
                     from .autofix import AutoFixer
-
                     fixer = AutoFixer(args.db)
-
+                    
                     # Pick rule with highest priority
                     priority = [
                         "missing-enum-keyword",
@@ -781,31 +827,34 @@ def main():
                         "variable-outside-block",
                         "variable-mid-block",
                     ]
-
+                    
                     target_rule = None
                     for r in priority:
                         if any(i.rule_id == r for i in fixable):
                             target_rule = r
                             break
-
+                    
                     if not target_rule:
                         # Pick first available if not in priority
                         target_rule = fixable[0].rule_id
-
+                    
                     rule_issues = [i for i in fixable if i.rule_id == target_rule]
-
-                    print(f"  🔧 Applying fixes for {target_rule} ({len(rule_issues)} issues)...")
+                    
+                    if not args.quiet:
+                        print(f"  🔧 Applying fixes for {target_rule} ({len(rule_issues)} issues)...")
                     fixed_content = fixer.apply_fixes(file_path, rule_issues)
-
+                    
                     with open(file_path, "w", encoding="utf-8") as f:
                         f.write(fixed_content)
-
+                    
                     # Continue to next pass to re-analyze
                 except Exception as e:
                     if not args.quiet:
                         print(f"✗ Error analyzing/fixing {file_path}: {e}")
-                        traceback.print_exc()
                     break
+            
+            # Add final issues for this file to the global accumulator
+            all_issues.extend(last_file_issues)
 
         if not args.quiet:
             print()
@@ -816,12 +865,12 @@ def main():
     if args.severity:
         severity_order = ["style", "info", "warning", "error"]
         min_level = severity_order.index(args.severity.lower())
-        linter.issues = [
-            i for i in linter.issues if severity_order.index(i.severity.value.lower()) >= min_level
+        all_issues = [
+            i for i in all_issues if severity_order.index(i.severity.value.lower()) >= min_level
         ]
 
-    print(linter.generate_report(linter.issues))
-    errors = sum(1 for i in linter.issues if i.severity == Severity.ERROR)
+    print(linter.generate_report(all_issues, format=args.format))
+    errors = sum(1 for i in all_issues if i.severity == Severity.ERROR)
     sys.exit(1 if errors > 0 else 0)
 
 

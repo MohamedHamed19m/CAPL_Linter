@@ -525,12 +525,17 @@ class CAPLSymbolExtractor:
         matches = cursor.matches(root)
         for pattern_index, captures_dict in matches:
             if "func" in captures_dict and "body" in captures_dict:
-                for i, func_node in enumerate(captures_dict["func"]):
+                # matches(root) returns a tuple (pattern_index, captures_dict)
+                # where captures_dict values are LISTS of nodes.
+                func_nodes = captures_dict["func"]
+                body_nodes = captures_dict["body"]
+                
+                for i, func_node in enumerate(func_nodes):
                     block_info = self._get_block_info(func_node, source)
-                    if i < len(captures_dict["body"]):
+                    if i < len(body_nodes):
                         all_locals.extend(
                             self._analyze_block_body(
-                                captures_dict["body"], source, block_info["name"]
+                                body_nodes[i], source, block_info["name"]
                             )
                         )
         return all_locals
@@ -599,8 +604,12 @@ class CAPLSymbolExtractor:
             self.language,
             """
             (declaration
-              type: (type_identifier) @type_name
-              declarator: (identifier) @var_name) @decl
+              type: (_) @type_name
+              declarator: [
+                (identifier) @var_name
+                (init_declarator
+                  declarator: (identifier) @var_name)
+              ]) @decl
         """,
         )
         cursor = QueryCursor(query)
@@ -608,13 +617,18 @@ class CAPLSymbolExtractor:
         matches = cursor.matches(root)
         for pattern_index, captures_dict in matches:
             if "type_name" in captures_dict and "var_name" in captures_dict:
-                for i, type_node in enumerate(captures_dict["type_name"]):
+                type_name_nodes = captures_dict["type_name"]
+                var_name_nodes = captures_dict["var_name"]
+                
+                for i, type_node in enumerate(type_name_nodes):
                     type_name = source[type_node.start_byte : type_node.end_byte]
                     type_kind = self._get_type_kind(type_name)
                     if type_kind:
                         if not self._has_type_keyword(type_node, source, type_kind):
-                            if i < len(captures_dict["var_name"]):
-                                var_node = captures_dict["var_name"][i]
+                            # var_name_nodes might have more entries if multiple variables in one decl
+                            # but usually tree-sitter splits them or we take the first one.
+                            if i < len(var_name_nodes):
+                                var_node = var_name_nodes[i]
                                 var_name = source[var_node.start_byte : var_node.end_byte]
                                 usages.append(
                                     Symbol(

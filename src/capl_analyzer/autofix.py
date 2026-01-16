@@ -13,6 +13,12 @@ class AutoFixer:
     """Automatically fix linting issues"""
 
     def __init__(self, db_path: str = "aic.db"):
+        """
+        Initialize the auto-fixer.
+        
+        Args:
+            db_path: Path to the SQLite database
+        """
         self.db_path = db_path
         self.fixes = {
             "variable-outside-block": self._fix_variable_outside_block,
@@ -26,16 +32,32 @@ class AutoFixer:
         }
     
     def can_fix(self, rule_id: str) -> bool:
-        """Check if a rule can be auto-fixed"""
+        """
+        Check if a rule can be auto-fixed.
+        
+        Args:
+            rule_id: The ID of the rule to check
+            
+        Returns:
+            True if a fix is implemented for this rule
+        """
         return rule_id in self.fixes 
     
     def apply_fixes(self, file_path: str, issues: List[LintIssue]) -> str:
         """
-        Apply a batch of issues (usually of the same rule type) to a file
+        Apply a batch of issues (usually of the same rule type) to a file.
+        
+        Args:
+            file_path: Path to the file to modify
+            issues: List of issues to fix
+            
+        Returns:
+            The modified content of the file
         """
         if not issues:
             with open(file_path, 'r', encoding='utf-8') as f:
                 return f.read()
+
                 
         # We assume all issues are for the same file
         with open(file_path, 'r', encoding='utf-8') as f:
