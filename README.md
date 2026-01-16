@@ -17,9 +17,12 @@
 ### Errors
 - ❌ Variables declared outside `variables {}` block (CAPL syntax error)
 - ❌ Local variables declared after executable statements (mid-block)
-- ❌ Undefined symbol references (with support for CAPL built-ins and test functions)
+- ❌ Undefined symbol references (with support for CAPL built-ins, test functions, and enum members)
 - ❌ Duplicate event handlers (excluding system events like `on start`)
 - ❌ Circular include dependencies
+- ❌ Missing `enum` or `struct` keywords in declarations
+- ❌ Forbidden syntax: function declarations (forward declarations)
+- ❌ Forbidden syntax: `extern` keyword usage
 
 ### Warnings
 - ⚠️ Unused variables, functions, messages, and timers

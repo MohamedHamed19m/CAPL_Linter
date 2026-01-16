@@ -1,0 +1,38 @@
+
+/*@@var:*/
+variables {
+  // Enums
+  enum STATUS {
+    OK = 0,
+    ERROR = 1
+  };
+  
+  // Structs
+  struct Point {
+    int x;
+    int y;
+  };
+
+  // Correct usages
+  enum STATUS gStatus;
+  struct Point gPoint;
+
+  // Incorrect usages (Missing keyword)
+  STATUS gBadStatus;       // ERROR: missing-enum-keyword
+  Point gBadPoint;         // ERROR: missing-struct-keyword
+}
+/*@@end*/
+
+// Forbidden syntax: Function declaration
+void MyFunc(int x);        // ERROR: function-declaration
+
+// Forbidden syntax: extern
+extern int gExternalVar;   // ERROR: extern-keyword
+
+void MyFunc(int x) {
+  // Correct usage
+  enum STATUS s = OK;
+  
+  // Incorrect usage
+  STATUS badS = ERROR;     // ERROR: missing-enum-keyword
+}
