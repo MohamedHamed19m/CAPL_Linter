@@ -1,0 +1,9 @@
+
+// Utility.cin
+void LogMessage(char msg[]) {
+  write("[LOG] %s", msg);
+}
+
+int CalculateDelta(int a, int b) {
+  return a - b;
+}

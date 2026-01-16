@@ -1,0 +1,75 @@
+
+/*@@var:*/
+variables {
+  message EngineState msgEngine;
+  message BrakeStatus msgBrake;
+  msTimer tCycle;
+  msTimer tWarning;
+  int gCounter = 0;
+}
+/*@@end*/
+
+int gErrorCount = 0;
+
+on start {
+  setTimer(tCycle, 100);
+  gCounter = 0;
+  InitSystem();
+}
+
+on message EngineState {
+  if (this.RPM > 3000) {
+    LogWarning("High RPM");
+    setTimer(tWarning, 500);
+    gCounter++;
+  }
+  msgEngine.RPM = this.RPM;
+}
+
+on message BrakeStatus {
+  if (this.Status == 1) {
+    LogInfo("Brakes applied");
+  }
+}
+
+on timer tCycle {
+  UpdateEngine();
+  output(msgEngine);
+  setTimer(this, 100);
+}
+
+on timer tWarning {
+  LogWarning("Warning timeout");
+}
+
+void InitSystem() {
+  gCounter = 0;
+  gErrorCount = 0;
+  LogInfo("System initialized");
+}
+
+void UpdateEngine() {
+  msgEngine.RPM = CalculateRPM();
+  gCounter++;
+}
+
+int CalculateRPM() {
+  return 2500 + gCounter * 10;
+}
+
+void LogInfo(char msg[]) {
+  write("[INFO] %s", msg);
+}
+
+void LogWarning(char msg[]) {
+  write("[WARN] %s", msg);
+  gErrorCount++;
+}
+
+void LogError(char msg[]) {
+  write("[ERROR] %s", msg);
+  gErrorCount++;
+  if (gErrorCount > 10) {
+    write("Too many errors!");
+  }
+}

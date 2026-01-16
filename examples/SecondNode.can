@@ -1,0 +1,10 @@
+
+#include "CommonDefinitions.cin"
+
+variables {
+  message BrakeStatus msgBrake;
+}
+
+on message BrakeStatus {
+  write("Brake status: %d", this.Status);
+}

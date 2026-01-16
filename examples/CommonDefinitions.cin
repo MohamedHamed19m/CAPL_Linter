@@ -1,0 +1,10 @@
+
+// CommonDefinitions.cin
+message EngineState {
+  DWORD RPM;
+  BYTE Temperature;
+}
+
+message BrakeStatus {
+  BYTE Status;
+}

@@ -1,0 +1,81 @@
+
+/*@@var:*/
+variables {
+  message EngineState msgEngine;
+  message BrakeStatus msgBrake;
+  msTimer tCycle;
+  msTimer tWarning;
+  int gIsRunning = 0;
+  DWORD counter;
+}
+/*@@end*/
+
+// Global variables outside variables block
+const int MAX_RPM = 5000;
+int errorCount = 0;
+
+on start {
+  setTimer(tCycle, 100);
+  write("System started");
+}
+
+on preStart {
+  write("Initializing...");
+  gIsRunning = 0;
+}
+
+on message EngineState {
+  if (this.RPM > 3000) {
+    write("Warning: High RPM detected!");
+    setTimer(tWarning, 500);
+  }
+  msgEngine.RPM = this.RPM;
+}
+
+on message BrakeStatus {
+  if (this.Status == 1) {
+    write("Brakes applied");
+  }
+}
+
+on signal Engine.RPM {
+  write("RPM signal changed: %d", this);
+}
+
+on timer tCycle {
+  msgEngine.RPM = 2500;
+  output(msgEngine);
+  setTimer(this, 100);
+}
+
+on timer tWarning {
+  write("Warning timer expired");
+}
+
+on key 'a' {
+  write("Key 'a' pressed");
+}
+
+on stopMeasurement {
+  write("Measurement stopped");
+  gIsRunning = 0;
+}
+
+void CheckSystemStatus(int systemID) {
+  // Complex logic here...
+  write("System %d is OK", systemID);
+}
+
+int CalculateAverage(int values[], int count) {
+  int sum = 0;
+  int i;
+  for (i = 0; i < count; i++) {
+    sum += values[i];
+  }
+  return sum / count;
+}
+
+void LogError(char msg[]) {
+  errorCount++;
+  write("[ERROR] %s", msg);
+}

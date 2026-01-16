@@ -1,0 +1,17 @@
+# Ignore the environment and git history
+.venv/
+.git/
+
+# Ignore build artifacts
+dist/
+build/
+
+# Ignore large data files in tests (keep the code, hide the blobs)
+tests/data/*.can
+tests/data/*.blf
+
+# Ignore documentation assets if they are just images
+docs/images/
+
+# Ignore lock files (usually too long for AI to process usefully)
+uv.lock

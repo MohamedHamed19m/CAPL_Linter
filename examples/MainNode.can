@@ -1,0 +1,13 @@
+
+#include "CommonDefinitions.cin"
+
+variables {
+  message EngineState msgEngine;
+  message BrakeStatus msgBrake;
+}
+
+on message EngineState {
+  if (this.RPM > 3000) {
+    write("Warning: High RPM!");
+  }
+}

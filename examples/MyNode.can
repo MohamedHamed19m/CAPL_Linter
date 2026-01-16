@@ -1,0 +1,28 @@
+/*@@var:*/
+variables {
+  message EngineState msgEngine;
+  msTimer tCycle;
+  int gIsRunning = 0;
+}
+/*@@end*/
+
+on start {
+  setTimer(tCycle, 100);
+}
+
+on message EngineState {
+  if (this.RPM > 3000) {
+    write("Warning: High RPM detected!");
+  }
+}
+
+on timer tCycle {
+  msgEngine.RPM = 2500;
+  output(msgEngine);
+  setTimer(this, 100);
+}
+
+void CheckSystemStatus(int systemID) {
+  // Complex logic here...
+  write("System %d is OK", systemID);
+}

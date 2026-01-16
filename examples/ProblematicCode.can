@@ -1,0 +1,86 @@
+
+/*@@var:*/
+variables {
+  // STYLE ISSUE: Message variable doesn't follow naming convention (should be msgEngine)
+  message EngineState engineMsg;
+  
+  // STYLE ISSUE: Timer doesn't follow naming convention (should be tCycle)
+  msTimer cycleTimer;
+  
+  // WARNING: This timer is set but has no handler
+  msTimer orphanTimer;
+  
+  // WARNING: This message is never used
+  message BrakeStatus unusedMsg;
+  
+  // INFO: This message variable is OK but has no handler for BrakeStatus
+  message ThrottleCmd msgThrottle;
+  
+  // STYLE ISSUE: Variable doesn't start with 'g'
+  int counter;
+  
+  // OK: Properly named global
+  int gErrorCount;
+}
+/*@@end*/
+
+// ERROR: Variable declared outside variables {} block - CAPL SYNTAX ERROR!
+int invalidGlobal = 0;
+
+// ERROR: Another variable outside variables block
+DWORD anotherBadVar = 100;
+
+// ERROR: Duplicate handler (defined twice)
+on start {
+  setTimer(cycleTimer, 100);
+  setTimer(orphanTimer, 200);
+  InitSystem();
+}
+
+// ERROR: Duplicate handler
+on start {
+  write("Starting again...");
+}
+
+// OK: This message has a handler and uses engineMsg properly
+on message EngineState {
+  if (this.RPM > 3000) {
+    LogWarning("High RPM");
+  }
+  engineMsg.RPM = this.RPM;
+  output(engineMsg);  // Message is actually used
+}
+
+// INFO: Handler for message that's never output in this file
+on message ThrottleCmd {
+  write("Throttle: %d", this.Position);
+}
+
+// WARNING: Timer handler but timer is never reset
+on timer cycleTimer {
+  engineMsg.RPM = 2500;
+  output(engineMsg);
+  // Missing: setTimer(this, 100);
+}
+
+void InitSystem() {
+  counter = 0;
+  gErrorCount = 0;
+  write("System initialized");
+}
+
+// INFO: This function is never called (might be unused)
+void UnusedHelper() {
+  write("This is never called");
+}
+
+void LogWarning(char msg[]) {
+  write("[WARN] %s", msg);
+  gErrorCount++;
+}
+
+// ERROR: Calls undefined function
+void BuggyFunction() {
+  DoSomethingUndefined();  // This function doesn't exist
+  LogWarning("Called undefined");
+}

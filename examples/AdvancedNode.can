@@ -1,0 +1,16 @@
+
+#include "CommonDefinitions.cin"
+#include "Utility.cin"
+
+variables {
+  message EngineState msgEngine;
+}
+
+on start {
+  LogMessage("System starting...");
+}
+
+on message EngineState {
+  int delta = CalculateDelta(this.RPM, 2000);
+  write("RPM delta: %d", delta);
+}
