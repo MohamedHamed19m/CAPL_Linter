@@ -2,7 +2,7 @@
 
 ## Phase 1: Workspace Setup & Structure
 
-- [ ] Task: Create workspace root structure
+- [~] Task: Create workspace root structure
     - [ ] Create workspace root `pyproject.toml` with `[tool.uv.workspace]` and `package = true`
     - [ ] Configure `[project.scripts]` for `capl-lint` and `capl-analyze`
     - [ ] Define workspace sources: `capl-tree-sitter`, `capl-symbol-db`, `capl-linter`

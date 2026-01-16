@@ -37,156 +37,54 @@
 
 ### Using UV (Recommended)
 
-```bash
-# Install UV if you haven't already
-curl -LsSf https://astral.sh/uv/install.sh | sh
+This project is managed as a [uv workspace](https://docs.astral.sh/uv/concepts/workspaces/).
 
+```bash
 # Clone the repository
 git clone https://github.com/yourusername/capl-analyzer.git
 cd capl-analyzer
 
-# Create virtual environment and install
-uv venv
-uv pip install -e .
-```
+# Sync the workspace (creates venv and installs all packages)
+uv sync
 
-### Using pip
-
-```bash
-pip install -e .
-```
-
-## 📖 Quick Start
-
-### 1. Analyze Dependencies
-
-```python
-from capl_analyzer import CAPLDependencyAnalyzer
-
-analyzer = CAPLDependencyAnalyzer(
-    db_path="aic.db",
-    search_paths=["./includes", "./common"]
-)
-
-# Analyze a single file
-analyzer.analyze_file("MyNode.can")
-
-# Get dependencies
-deps = analyzer.get_dependencies("MyNode.can", recursive=True)
-print(f"Dependencies: {deps}")
-
-# Generate dependency graph
-analyzer.generate_dependency_graph("deps.dot")
-```
-
-### 2. Extract Symbols
-
-```python
-from capl_analyzer import CAPLSymbolExtractor
-
-extractor = CAPLSymbolExtractor()
-
-# Extract and store symbols
-extractor.store_symbols("MyNode.can")
-
-# List symbols in file
-symbols = extractor.list_symbols_in_file("MyNode.can")
-for name, sym_type, line, sig in symbols:
-    print(f"{line:4d} | {sym_type:15s} | {name}")
-```
-
-### 3. Find All References
-
-```python
-from capl_analyzer import CAPLCrossReferenceBuilder
-
-xref = CAPLCrossReferenceBuilder()
-
-# Build cross-references
-xref.analyze_file_references("MyNode.can")
-
-# Find all references to a symbol
-refs = xref.find_all_references("msgEngine")
-for ref in refs:
-    print(f"{ref.file_path}:{ref.line_number} [{ref.reference_type}]")
-
-# Get call graph
-graph = xref.get_call_graph("UpdateEngine")
-print("Called by:", graph['callers'])
-print("Calls:", graph['callees'])
-```
-
-### 4. Run Linter
-
-```python
-from capl_analyzer import CAPLLinter
-
-linter = CAPLLinter()
-
-# Analyze a file
-issues = linter.analyze_file("MyNode.can")
-
-# Generate report
-print(linter.generate_report(issues))
-```
-
-Or use the command-line interface:
-
-```bash
-# Lint a single file
-capl-lint MyNode.can
-
-# Lint entire project
-capl-lint --project
-
-# Filter by severity
-capl-lint --severity warning MyNode.can
-
-# Show what would be fixed (dry run)
-capl-lint --fix-dry-run MyNode.can
-
-# Automatically fix issues
-capl-lint --fix MyNode.can
-
-# Fix only specific rule IDs
-capl-lint --fix --fix-only variable-outside-block MyNode.can
+# Run the linter
+uv run capl-lint MyNode.can
 ```
 
 ## 🏗️ Project Structure
 
+The project is organized into a modular monorepo structure:
+
+- **`capl-cli`** (Root): User-facing CLI built with `typer`.
+- **`packages/capl-tree-sitter`**: Core CAPL parsing using tree-sitter.
+- **`packages/capl-symbol-db`**: Symbol extraction and persistent storage (SQLite).
+- **`packages/capl-linter`**: Analysis engine and auto-fix logic.
+
 ```
 capl-analyzer/
+├── packages/
+│   ├── capl-tree-sitter/
+│   ├── capl-symbol-db/
+│   └── capl-linter/
 ├── src/
-│   └── capl_analyzer/
-│       ├── __init__.py
-│       ├── dependency_analyzer.py
-│       ├── symbol_extractor.py
-│       ├── cross_reference.py
-│       └── linter.py
-├── tests/
-│   ├── test_dependency_analyzer.py
-│   ├── test_symbol_extractor.py
-│   ├── test_cross_reference.py
-│   └── test_linter.py
+│   └── capl_cli/          # CLI source
 ├── examples/
-│   ├── MyNode.can
-│   └── ProblematicCode.can
 ├── docs/
-├── pyproject.toml
+├── pyproject.toml         # Workspace configuration
 └── README.md
 ```
 
 ## 🧪 Running Tests
 
 ```bash
-# Install dev dependencies
-uv pip install -e ".[dev]"
+# Run all tests across the entire workspace
+uv run --workspace pytest
 
-# Run all tests
-pytest
+# Run tests for a specific package
+uv run --package capl-linter pytest
 
-# Run with coverage
-pytest --cov=capl_analyzer --cov-report=html
+# Run with coverage aggregated across the workspace
+uv run --workspace pytest --cov-report=html
 ```
 
 ## 🤝 Contributing
