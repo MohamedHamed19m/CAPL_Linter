@@ -4,6 +4,7 @@ from pathlib import Path
 from tree_sitter import Node
 from capl_tree_sitter.parser import CAPLParser
 from capl_tree_sitter.queries import CAPLQueryHelper
+from capl_tree_sitter.ast_walker import ASTWalker
 from .models import SymbolInfo, TypeDefinition
 
 class SymbolExtractor:
@@ -46,12 +47,11 @@ class SymbolExtractor:
 
     def _extract_enum_definitions(self, root: Node, source: str) -> List[SymbolInfo]:
         symbols = []
+        # We need to ensure it has a body to be a definition
         query = """
             (enum_specifier
               name: (type_identifier) @enum_name
-              body: (enumerator_list
-                (enumerator
-                  name: (identifier) @member_name) @member)*) @enum_def
+              body: (enumerator_list) @members) @enum_def
         """
         matches = self.query_helper.query(query, root)
         for m in matches:
@@ -60,12 +60,14 @@ class SymbolExtractor:
                 name = source[name_node.start_byte : name_node.end_byte]
                 self.current_file_types[name] = "enum"
                 
+                scope = "variables_block" if self._is_in_variables_block(m.node, source) else "global"
+                
                 line = name_node.start_point[0] + 1
                 symbols.append(SymbolInfo(
                     name=name,
                     symbol_type="constant",
                     line_number=line,
-                    scope="global",
+                    scope=scope,
                     context="enum_definition"
                 ))
         return symbols
@@ -75,7 +77,7 @@ class SymbolExtractor:
         query = """
             (struct_specifier
               name: (type_identifier) @struct_name
-              body: (field_declaration_list)) @struct_def
+              body: (field_declaration_list) @members) @struct_def
         """
         matches = self.query_helper.query(query, root)
         for m in matches:
@@ -84,15 +86,36 @@ class SymbolExtractor:
                 name = source[name_node.start_byte : name_node.end_byte]
                 self.current_file_types[name] = "struct"
                 
+                scope = "variables_block" if self._is_in_variables_block(m.node, source) else "global"
+                
                 line = name_node.start_point[0] + 1
                 symbols.append(SymbolInfo(
                     name=name,
                     symbol_type="constant",
                     line_number=line,
-                    scope="global",
+                    scope=scope,
                     context="struct_definition"
                 ))
         return symbols
+
+    def _is_in_variables_block(self, node: Node, source: str) -> bool:
+        """Check if a node is inside a variables {} block"""
+        curr = node
+        while curr:
+            if curr.type == "compound_statement":
+                p = curr.parent
+                if p:
+                    # Look at this block and its immediate context
+                    for i, child in enumerate(p.children):
+                        if child == curr:
+                            # Check text before this block
+                            start = p.children[i-1].start_byte if i > 0 else p.start_byte
+                            context_text = source[start : curr.start_byte]
+                            if "variables" in context_text:
+                                return True
+                            break
+            curr = curr.parent
+        return False
 
     def _extract_event_handlers(self, root: Node, source: str) -> List[SymbolInfo]:
         symbols = []
@@ -133,21 +156,143 @@ class SymbolExtractor:
         return symbols
 
     def _extract_variables_block(self, root: Node, source: str) -> List[SymbolInfo]:
-        # Logic to find 'variables {' blocks and extract contents
+        symbols = []
+        # Find 'variables {' blocks
+        # This is hard because tree-sitter-c doesn't know 'variables'
+        # We search for it in source and find the matching block if possible, 
+        # or use a query that matches what tree-sitter-c thinks it is (often a labeled statement or function)
         return []
 
     def _extract_global_variables(self, root: Node, source: str) -> List[SymbolInfo]:
-        return []
+        symbols = []
+        # Global variables are declarations at the root level (translation_unit)
+        # that are NOT inside a 'variables' block and NOT inside a function.
+        query = "(declaration) @decl"
+        matches = self.query_helper.query(query, root)
+        for m in matches:
+            node = m.node
+            
+            # Skip if inside a function or a variables block
+            if self._is_in_variables_block(node, source):
+                scope = "variables_block"
+            elif ASTWalker.find_parent_of_type(node, "function_definition"):
+                continue # Handled by local variable extraction
+            else:
+                # Root level but not in variables block
+                scope = "global"
+
+            # Get the name(s)
+            name_query = "(init_declarator declarator: (identifier) @name)"
+            name_matches = self.query_helper.query(name_query, node)
+            for nm in name_matches:
+                name_node = nm.captures["name"]
+                name = source[name_node.start_byte : name_node.end_byte]
+                symbols.append(SymbolInfo(
+                    name=name,
+                    symbol_type="variable",
+                    line_number=name_node.start_point[0] + 1,
+                    scope=scope
+                ))
+        return symbols
 
     def _extract_all_local_variables(self, root: Node, source: str) -> List[SymbolInfo]:
-        return []
+        symbols = []
+        # Local variables are declarations inside functions or event handlers
+        query = "(function_definition) @func"
+        matches = self.query_helper.query(query, root)
+        for m in matches:
+            func_node = m.node
+            # Extract function name
+            func_name = "unknown"
+            decl_node = func_node.child_by_field_name("declarator")
+            if decl_node:
+                # Find identifier in declarator
+                id_query = "(identifier) @name"
+                id_matches = self.query_helper.query(id_query, decl_node)
+                if id_matches:
+                    name_node = id_matches[0].captures["name"]
+                    func_name = source[name_node.start_byte : name_node.end_byte]
+
+            # Find all statements inside this function body
+            body_node = func_node.child_by_field_name("body")
+            if not body_node:
+                continue
+
+            first_non_decl_line = None
+            # Iterate through children of compound_statement
+            for child in body_node.children:
+                if child.type in ("{", "}"):
+                    continue
+                
+                if child.type == "declaration":
+                    # It's a declaration. Check if it's after a non-decl
+                    pos = "block_start"
+                    if first_non_decl_line is not None and child.start_point[0] > first_non_decl_line:
+                        pos = "mid_block"
+                    
+                    # Extract names from this declaration
+                    name_query = "(init_declarator declarator: (identifier) @name)"
+                    name_matches = self.query_helper.query(name_query, child)
+                    for nm in name_matches:
+                        name_node = nm.captures["name"]
+                        name = source[name_node.start_byte : name_node.end_byte]
+                        symbols.append(SymbolInfo(
+                            name=name,
+                            symbol_type="variable",
+                            line_number=name_node.start_point[0] + 1,
+                            scope="local",
+                            parent_symbol=func_name,
+                            declaration_position=pos
+                        ))
+                else:
+                    # Non-declaration statement
+                    if first_non_decl_line is None:
+                        first_non_decl_line = child.start_point[0]
+        return symbols
 
     def _extract_type_usages(self, root: Node, source: str) -> List[SymbolInfo]:
-        return []
+        symbols = []
+        # Look for declarations where the type is a known enum/struct 
+        # but the keyword (enum/struct) is missing.
+        query = "(declaration (type_identifier) @type_name) @decl"
+        matches = self.query_helper.query(query, root)
+        for m in matches:
+            if "type_name" not in m.captures:
+                continue
+            type_node = m.captures["type_name"]
+            type_name = source[type_node.start_byte : type_node.end_byte]
+            
+            # Check if this type name is a known enum or struct
+            kind = self.current_file_types.get(type_name)
+            if kind:
+                # Double check by looking at the source text before the type name
+                start_of_decl = m.node.start_byte
+                text_before = source[start_of_decl : type_node.start_byte]
+                if kind not in text_before:
+                    # Missing keyword!
+                    # Find the variable name
+                    name_query = "(identifier) @name"
+                    name_matches = self.query_helper.query(name_query, m.node)
+                    # The first identifier after the type name is likely the variable name
+                    var_name = "unknown"
+                    for nm in name_matches:
+                        node = nm.captures["name"]
+                        if node.start_byte > type_node.end_byte:
+                            var_name = source[node.start_byte : node.end_byte]
+                            break
+                            
+                    symbols.append(SymbolInfo(
+                        name=var_name,
+                        symbol_type="type_usage_error",
+                        line_number=type_node.start_point[0] + 1,
+                        signature=source[m.node.start_byte : m.node.end_byte].strip(),
+                        context=f"missing_{kind}_keyword"
+                    ))
+        return symbols
 
     def _extract_forbidden_syntax(self, root: Node, source: str) -> List[SymbolInfo]:
         symbols = []
-        # Detection for 'extern' and forward declarations
+        # 1. Detection for 'extern' keyword
         lines = source.split('\n')
         for i, line in enumerate(lines):
             if 'extern' in line.split('//')[0]:
@@ -159,4 +304,25 @@ class SymbolExtractor:
                     scope="forbidden",
                     context="extern_keyword"
                 ))
+        
+        # 2. Detection for function declarations (forward declarations)
+        query = """
+            (declaration
+              declarator: (function_declarator
+                declarator: (identifier) @func_name)) @func_decl
+        """
+        matches = self.query_helper.query(query, root)
+        for m in matches:
+            if "func_name" in m.captures:
+                name_node = m.captures["func_name"]
+                name = source[name_node.start_byte : name_node.end_byte]
+                symbols.append(SymbolInfo(
+                    name=name,
+                    symbol_type="forbidden_syntax",
+                    line_number=name_node.start_point[0] + 1,
+                    signature=source[m.node.start_byte : m.node.end_byte].strip(),
+                    scope="forbidden",
+                    context="function_declaration"
+                ))
+                
         return symbols

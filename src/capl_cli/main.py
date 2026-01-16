@@ -35,17 +35,59 @@ def lint(
         raise typer.Exit(code=1)
         
     for file_path in files:
-        issues = engine.analyze_file(file_path)
-        all_issues.extend(issues)
+        max_passes = 10
+        passes = 0
         
-        if fix:
-            autofix = AutoFixEngine()
-            # Simple fix logic for now
+        while passes < max_passes:
+            passes += 1
+            issues = engine.analyze_file(file_path, force=(passes > 1))
+            all_issues.extend(issues) if passes == 1 else None # Only collect once for final report if needed, or handle differently
+            
+            if not fix:
+                break
+                
             fixable = [i for i in issues if i.auto_fixable]
-            if fixable:
-                typer.echo(f"🔧 Applying fixes to {file_path.name}...")
-                new_content = autofix.apply_fixes(file_path, fixable)
-                file_path.write_text(new_content, encoding="utf-8")
+            if not fixable:
+                break
+                
+            autofix = AutoFixEngine()
+            
+            # Pick one rule type to fix at a time
+            # Priority list for fixes
+            priority = [
+                "missing-enum-keyword",
+                "missing-struct-keyword",
+                "function-declaration",
+                "global-enum-definition",
+                "global-struct-definition",
+                "variable-outside-block",
+                "variable-mid-block",
+            ]
+            
+            target_rule = None
+            for r in priority:
+                if any(i.rule_id == r for i in fixable):
+                    target_rule = r
+                    break
+            
+            if not target_rule:
+                target_rule = fixable[0].rule_id
+                
+            rule_issues = [i for i in fixable if i.rule_id == target_rule]
+            typer.echo(f"  🔧 Applying fixes for {target_rule} ({len(rule_issues)} issues)...")
+            
+            new_content = autofix.apply_fixes(file_path, rule_issues)
+            file_path.write_text(new_content, encoding="utf-8")
+            
+            # Re-collect all issues for the global accumulator after final pass?
+            # For simplicity, we just break here if we were not fixing.
+            # But we ARE fixing, so we loop.
+            if passes == max_passes:
+                typer.echo(f"Warning: Reached max fix passes for {file_path}")
+
+        # Re-analyze one last time to get final issues
+        final_issues = engine.analyze_file(file_path, force=True)
+        all_issues.extend(final_issues)
 
     # Convert to external models and print (simplified report for now)
     external_issues = [internal_issue_to_lint_issue(i) for i in all_issues]

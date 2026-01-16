@@ -22,5 +22,10 @@ class RuleRegistry:
         return self._rules
 
     def _load_builtin_rules(self):
-        from .rules.syntax_rules import ForbiddenSyntaxRule
+        from .rules.syntax_rules import ForbiddenSyntaxRule, GlobalTypeDefinitionRule
+        from .rules.variable_rules import VariablePlacementRule
+        from .rules.type_rules import TypeUsageRule
         self.register(ForbiddenSyntaxRule())
+        self.register(GlobalTypeDefinitionRule())
+        self.register(VariablePlacementRule())
+        self.register(TypeUsageRule())

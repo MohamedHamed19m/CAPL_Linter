@@ -25,8 +25,11 @@ class LinterEngine:
         
         # Ensure file is analyzed
         if force or self._needs_analysis(file_path):
-            self.extractor.extract_all(file_path) # Extractor should store in DB
-            # Note: Need to update Extractor to use the DB instance
+            syms = self.extractor.extract_all(file_path)
+            with open(file_path, "rb") as f:
+                source_code = f.read()
+                file_id = self.db.store_file(file_path, source_code)
+            self.db.store_symbols(file_id, syms)
             self.xref.analyze_file_references(file_path)
             self.dep_analyzer.analyze_file(file_path)
             
