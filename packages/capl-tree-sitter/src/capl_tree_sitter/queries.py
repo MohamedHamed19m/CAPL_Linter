@@ -1,7 +1,7 @@
-from tree_sitter import Language, Query, Node, QueryCursor
-from typing import List, Dict
-from .node_types import NodeMatch
 import tree_sitter_c as tsc
+from tree_sitter import Language, Node, Query, QueryCursor
+
+from .node_types import NodeMatch
 
 
 class CAPLQueryHelper:
@@ -10,7 +10,7 @@ class CAPLQueryHelper:
     def __init__(self):
         self.language = Language(tsc.language())
 
-    def query(self, query_str: str, node: Node) -> List[NodeMatch]:
+    def query(self, query_str: str, node: Node) -> list[NodeMatch]:
         """Execute a query and return matched nodes with captures"""
         query = Query(self.language, query_str)
         cursor = QueryCursor(query)

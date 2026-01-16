@@ -1,8 +1,5 @@
 import pytest
-from pathlib import Path
 from capl_linter.engine import LinterEngine
-from capl_symbol_db.database import SymbolDatabase
-from capl_symbol_db.extractor import SymbolExtractor
 
 
 def test_variable_outside_variables_block(tmp_path):

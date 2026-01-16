@@ -1,9 +1,10 @@
-from typing import List, Optional, Dict
 from pathlib import Path
+
 from capl_symbol_db.database import SymbolDatabase
+from capl_symbol_db.dependency import DependencyAnalyzer
 from capl_symbol_db.extractor import SymbolExtractor
 from capl_symbol_db.xref import CrossReferenceBuilder
-from capl_symbol_db.dependency import DependencyAnalyzer
+
 from .models import InternalIssue
 from .registry import RuleRegistry
 
@@ -18,9 +19,9 @@ class LinterEngine:
         self.xref = CrossReferenceBuilder(self.db)
         self.dep_analyzer = DependencyAnalyzer(self.db)
         self.registry = RuleRegistry()
-        self.issues: List[InternalIssue] = []
+        self.issues: list[InternalIssue] = []
 
-    def analyze_file(self, file_path: Path, force: bool = False) -> List[InternalIssue]:
+    def analyze_file(self, file_path: Path, force: bool = False) -> list[InternalIssue]:
         """Run all lint checks on a file"""
         file_path = file_path.resolve()
 

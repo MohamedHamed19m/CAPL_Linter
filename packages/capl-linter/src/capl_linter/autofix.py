@@ -1,14 +1,15 @@
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import List, Dict, Optional, Callable
-from .models import InternalIssue, AutoFixAction
+
+from .models import InternalIssue
 
 
 class AutoFixEngine:
     """Automatically fix linting issues using registered fixers"""
 
     def __init__(self):
-        self._fixers: Dict[str, Callable[[str, List[InternalIssue]], str]] = {
+        self._fixers: dict[str, Callable[[str, list[InternalIssue]], str]] = {
             "variable-outside-block": self._fix_variable_outside_block,
             "variable-mid-block": self._fix_variable_mid_block,
             "missing-enum-keyword": self._fix_missing_type_keyword,
@@ -22,7 +23,7 @@ class AutoFixEngine:
     def can_fix(self, rule_id: str) -> bool:
         return rule_id in self._fixers
 
-    def apply_fixes(self, file_path: Path, issues: List[InternalIssue]) -> str:
+    def apply_fixes(self, file_path: Path, issues: list[InternalIssue]) -> str:
         if not issues:
             return file_path.read_text(encoding="utf-8")
 
@@ -35,7 +36,7 @@ class AutoFixEngine:
 
         return content
 
-    def _fix_global_type_definition(self, content: str, issues: List[InternalIssue]) -> str:
+    def _fix_global_type_definition(self, content: str, issues: list[InternalIssue]) -> str:
         lines = content.split("\n")
         var_block_start, var_block_end = self._find_variables_block_range(lines)
 
@@ -91,7 +92,7 @@ class AutoFixEngine:
 
         return "\n".join(lines)
 
-    def _fix_extern_keyword(self, content: str, issues: List[InternalIssue]) -> str:
+    def _fix_extern_keyword(self, content: str, issues: list[InternalIssue]) -> str:
         lines = content.split("\n")
         for issue in sorted(issues, key=lambda x: x.line, reverse=True):
             idx = issue.line - 1
@@ -99,7 +100,7 @@ class AutoFixEngine:
                 lines[idx] = re.sub(r"\bextern\s+", "", lines[idx], count=1)
         return "\n".join(lines)
 
-    def _fix_missing_type_keyword(self, content: str, issues: List[InternalIssue]) -> str:
+    def _fix_missing_type_keyword(self, content: str, issues: list[InternalIssue]) -> str:
         lines = content.split("\n")
         for issue in sorted(issues, key=lambda x: x.line, reverse=True):
             idx = issue.line - 1
@@ -113,7 +114,7 @@ class AutoFixEngine:
                     lines[idx] = re.sub(pattern, f"{keyword} {type_name}", lines[idx], count=1)
         return "\n".join(lines)
 
-    def _fix_variable_outside_block(self, content: str, issues: List[InternalIssue]) -> str:
+    def _fix_variable_outside_block(self, content: str, issues: list[InternalIssue]) -> str:
         lines = content.split("\n")
         var_block_start, var_block_end = self._find_variables_block_range(lines)
 
@@ -146,11 +147,11 @@ class AutoFixEngine:
 
         return "\n".join(lines)
 
-    def _fix_variable_mid_block(self, content: str, issues: List[InternalIssue]) -> str:
+    def _fix_variable_mid_block(self, content: str, issues: list[InternalIssue]) -> str:
         lines = content.split("\n")
 
         # Group issues by parent function/testcase
-        by_parent: Dict[str, List[InternalIssue]] = {}
+        by_parent: dict[str, list[InternalIssue]] = {}
         for issue in issues:
             parent = issue.context or "unknown"
             if parent not in by_parent:
@@ -185,7 +186,7 @@ class AutoFixEngine:
 
         return "\n".join(lines)
 
-    def _fix_function_declaration(self, content: str, issues: List[InternalIssue]) -> str:
+    def _fix_function_declaration(self, content: str, issues: list[InternalIssue]) -> str:
         lines = content.split("\n")
         for issue in sorted(issues, key=lambda x: x.line, reverse=True):
             line_idx = issue.line - 1
@@ -204,7 +205,7 @@ class AutoFixEngine:
         return "\n".join(lines)
 
     # Helpers
-    def _find_variables_block_range(self, lines: List[str]):
+    def _find_variables_block_range(self, lines: list[str]):
         start = end = None
         brace_count = 0
         for i, line in enumerate(lines):
@@ -220,7 +221,7 @@ class AutoFixEngine:
                     return start, i
         return None, None
 
-    def _find_function_start(self, lines: List[str], func_name: str) -> Optional[int]:
+    def _find_function_start(self, lines: list[str], func_name: str) -> int | None:
         if not func_name or func_name == "unknown":
             return None
         # Exact match for function name in signature

@@ -1,7 +1,6 @@
-import pytest
 from typer.testing import CliRunner
+
 from src.capl_cli.main import app
-from pathlib import Path
 
 runner = CliRunner()
 

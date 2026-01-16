@@ -1,15 +1,16 @@
 import sqlite3
 from pathlib import Path
-from typing import List, Optional, Tuple
+
 from capl_tree_sitter.parser import CAPLParser
 from capl_tree_sitter.queries import CAPLQueryHelper
+
 from .database import SymbolDatabase
 
 
 class DependencyAnalyzer:
     """Analyzes #include dependencies in CAPL files"""
 
-    def __init__(self, db: SymbolDatabase, search_paths: List[str] = None):
+    def __init__(self, db: SymbolDatabase, search_paths: list[str] = None):
         self.db = db
         self.search_paths = search_paths or []
         self.parser = CAPLParser()
@@ -72,7 +73,7 @@ class DependencyAnalyzer:
 
         return file_id
 
-    def _resolve_path(self, include_path: str, source_file: Path) -> Optional[Path]:
+    def _resolve_path(self, include_path: str, source_file: Path) -> Path | None:
         # Relative to source
         candidate = source_file.parent / include_path
         if candidate.exists():

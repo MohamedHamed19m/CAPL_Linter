@@ -1,8 +1,8 @@
-import sqlite3
 import hashlib
+import sqlite3
 from pathlib import Path
-from typing import List, Optional
-from .models import SymbolInfo, TypeDefinition
+
+from .models import SymbolInfo
 
 
 class SymbolDatabase:
@@ -130,7 +130,7 @@ class SymbolDatabase:
         finally:
             conn.close()
 
-    def store_symbols(self, file_id: int, symbols: List[SymbolInfo]):
+    def store_symbols(self, file_id: int, symbols: list[SymbolInfo]):
         """Store symbols for a specific file"""
         conn = sqlite3.connect(self.db_path)
         try:
@@ -158,7 +158,7 @@ class SymbolDatabase:
         finally:
             conn.close()
 
-    def get_file_hash(self, file_path: Path) -> Optional[str]:
+    def get_file_hash(self, file_path: Path) -> str | None:
         """Get stored hash for a file"""
         file_path_abs = str(file_path.resolve())
         conn = sqlite3.connect(self.db_path)

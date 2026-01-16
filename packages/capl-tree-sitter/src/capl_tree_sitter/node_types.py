@@ -1,6 +1,7 @@
 from dataclasses import dataclass
-from typing import Any, List, Optional
-from tree_sitter import Tree, Node
+from typing import Optional
+
+from tree_sitter import Node, Tree
 
 
 @dataclass
@@ -12,7 +13,7 @@ class ASTNode:
     end_line: int
     text: str
     parent: Optional["ASTNode"] = None
-    original_node: Optional[Node] = None
+    original_node: Node | None = None
 
 
 @dataclass
@@ -21,7 +22,7 @@ class ParseResult:
 
     tree: Tree
     source: str
-    errors: List[str]
+    errors: list[str]
 
 
 @dataclass

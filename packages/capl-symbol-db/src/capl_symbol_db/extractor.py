@@ -1,11 +1,12 @@
 import re
-from typing import List, Optional, Dict
 from pathlib import Path
-from tree_sitter import Node
+
+from capl_tree_sitter.ast_walker import ASTWalker
 from capl_tree_sitter.parser import CAPLParser
 from capl_tree_sitter.queries import CAPLQueryHelper
-from capl_tree_sitter.ast_walker import ASTWalker
-from .models import SymbolInfo, TypeDefinition
+from tree_sitter import Node
+
+from .models import SymbolInfo
 
 
 class SymbolExtractor:
@@ -16,7 +17,7 @@ class SymbolExtractor:
         self.query_helper = CAPLQueryHelper()
         self.current_file_types = {}
 
-    def extract_all(self, file_path: Path) -> List[SymbolInfo]:
+    def extract_all(self, file_path: Path) -> list[SymbolInfo]:
         """Full extraction of symbols from a file"""
         result = self.parser.parse_file(file_path)
         root = result.tree.root_node
@@ -46,7 +47,7 @@ class SymbolExtractor:
 
         return unique_symbols
 
-    def _extract_enum_definitions(self, root: Node, source: str) -> List[SymbolInfo]:
+    def _extract_enum_definitions(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
         # We need to ensure it has a body to be a definition
         query = """
@@ -77,7 +78,7 @@ class SymbolExtractor:
                 )
         return symbols
 
-    def _extract_struct_definitions(self, root: Node, source: str) -> List[SymbolInfo]:
+    def _extract_struct_definitions(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
         query = """
             (struct_specifier
@@ -126,7 +127,7 @@ class SymbolExtractor:
             curr = curr.parent
         return False
 
-    def _extract_event_handlers(self, root: Node, source: str) -> List[SymbolInfo]:
+    def _extract_event_handlers(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
         # Simplified query for common CAPL event handlers
         # In tree-sitter-c, these often appear as a labeled statement or similar
@@ -152,7 +153,7 @@ class SymbolExtractor:
                 )
         return symbols
 
-    def _extract_functions(self, root: Node, source: str) -> List[SymbolInfo]:
+    def _extract_functions(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
         query = "(function_definition) @func"
         matches = self.query_helper.query(query, root)
@@ -173,7 +174,7 @@ class SymbolExtractor:
             )
         return symbols
 
-    def _extract_variables_block(self, root: Node, source: str) -> List[SymbolInfo]:
+    def _extract_variables_block(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
         # Find 'variables {' blocks
         # This is hard because tree-sitter-c doesn't know 'variables'
@@ -181,7 +182,7 @@ class SymbolExtractor:
         # or use a query that matches what tree-sitter-c thinks it is (often a labeled statement or function)
         return []
 
-    def _extract_global_variables(self, root: Node, source: str) -> List[SymbolInfo]:
+    def _extract_global_variables(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
         # Global variables are declarations at the root level (translation_unit)
         # that are NOT inside a 'variables' block and NOT inside a function.
@@ -215,7 +216,7 @@ class SymbolExtractor:
                 )
         return symbols
 
-    def _extract_all_local_variables(self, root: Node, source: str) -> List[SymbolInfo]:
+    def _extract_all_local_variables(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
         # Local variables are declarations inside functions or event handlers
         query = "(function_definition) @func"
@@ -275,7 +276,7 @@ class SymbolExtractor:
                         first_non_decl_line = child.start_point[0]
         return symbols
 
-    def _extract_type_usages(self, root: Node, source: str) -> List[SymbolInfo]:
+    def _extract_type_usages(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
         # Look for declarations where the type is a known enum/struct
         # but the keyword (enum/struct) is missing.
@@ -317,7 +318,7 @@ class SymbolExtractor:
                     )
         return symbols
 
-    def _extract_forbidden_syntax(self, root: Node, source: str) -> List[SymbolInfo]:
+    def _extract_forbidden_syntax(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
         # 1. Detection for 'extern' keyword
         lines = source.split("\n")

@@ -1,9 +1,10 @@
 import sqlite3
 from pathlib import Path
-from typing import List
-from .base import BaseRule
-from ..models import InternalIssue
+
 from capl_symbol_db.database import SymbolDatabase
+
+from ..models import InternalIssue
+from .base import BaseRule
 
 
 class TypeUsageRule(BaseRule):
@@ -11,7 +12,7 @@ class TypeUsageRule(BaseRule):
     def rule_id(self) -> str:
         return "type-usage"
 
-    def check(self, file_path: Path, db: SymbolDatabase) -> List[InternalIssue]:
+    def check(self, file_path: Path, db: SymbolDatabase) -> list[InternalIssue]:
         issues = []
         file_path_abs = str(file_path.resolve())
 

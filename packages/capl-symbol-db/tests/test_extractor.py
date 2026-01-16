@@ -1,7 +1,5 @@
-import pytest
-from pathlib import Path
-from capl_symbol_db.extractor import SymbolExtractor
 from capl_symbol_db.database import SymbolDatabase
+from capl_symbol_db.extractor import SymbolExtractor
 
 
 def test_symbol_extraction(tmp_path):

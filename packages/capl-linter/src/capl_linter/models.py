@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional, List, Any
 from pathlib import Path
 
 
@@ -13,7 +12,7 @@ class InternalIssue:
     message: str
     severity: str  # 'error', 'warning', 'style', 'info'
     auto_fixable: bool
-    context: Optional[str] = None
+    context: str | None = None
 
 
 @dataclass
@@ -22,5 +21,5 @@ class AutoFixAction:
 
     action_type: str  # 'insert', 'replace', 'delete'
     line_number: int
-    old_text: Optional[str] = None
-    new_text: Optional[str] = None
+    old_text: str | None = None
+    new_text: str | None = None

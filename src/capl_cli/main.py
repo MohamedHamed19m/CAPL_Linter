@@ -1,12 +1,10 @@
-import typer
-from typing import List, Optional
 from pathlib import Path
-import sys
 
-from capl_linter.engine import LinterEngine
+import typer
 from capl_linter.autofix import AutoFixEngine
-from capl_symbol_db.extractor import SymbolExtractor
+from capl_linter.engine import LinterEngine
 from capl_symbol_db.database import SymbolDatabase
+from capl_symbol_db.extractor import SymbolExtractor
 from capl_symbol_db.xref import CrossReferenceBuilder
 
 from .converters import internal_issue_to_lint_issue
@@ -16,7 +14,7 @@ app = typer.Typer(help="CAPL Static Analyzer - Analyze CAPL code for issues and 
 
 @app.command()
 def lint(
-    files: List[Path] = typer.Argument(None, help="Files to lint"),
+    files: list[Path] = typer.Argument(None, help="Files to lint"),
     project: bool = typer.Option(False, help="Lint entire project"),
     severity: str = typer.Option("STYLE", help="Minimum severity to show"),
     db: str = typer.Option("aic.db", help="Database path"),
@@ -106,7 +104,7 @@ def lint(
 
 @app.command()
 def analyze(
-    files: List[Path] = typer.Argument(..., help="Files to analyze"),
+    files: list[Path] = typer.Argument(..., help="Files to analyze"),
     db: str = typer.Option("aic.db", help="Database path"),
 ):
     """Analyze dependencies and symbols"""

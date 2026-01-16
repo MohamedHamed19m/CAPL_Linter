@@ -1,5 +1,6 @@
+from collections.abc import Callable
+
 from tree_sitter import Node
-from typing import Callable, Optional, List
 
 
 class ASTWalker:
@@ -13,7 +14,7 @@ class ASTWalker:
             ASTWalker.walk(child, callback)
 
     @staticmethod
-    def find_parent_of_type(node: Node, type_name: str) -> Optional[Node]:
+    def find_parent_of_type(node: Node, type_name: str) -> Node | None:
         """Find the first parent node of a specific type"""
         current = node.parent
         while current:
@@ -23,7 +24,7 @@ class ASTWalker:
         return None
 
     @staticmethod
-    def get_child_of_type(node: Node, type_name: str) -> Optional[Node]:
+    def get_child_of_type(node: Node, type_name: str) -> Node | None:
         """Find the first direct child of a specific type"""
         for child in node.children:
             if child.type == type_name:
@@ -31,7 +32,7 @@ class ASTWalker:
         return None
 
     @staticmethod
-    def find_all_by_type(node: Node, type_name: str) -> List[Node]:
+    def find_all_by_type(node: Node, type_name: str) -> list[Node]:
         """Find all descendant nodes of a specific type"""
         results = []
 

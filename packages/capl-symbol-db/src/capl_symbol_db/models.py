@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional, List, Any
 
 
 @dataclass
@@ -9,18 +8,18 @@ class SymbolInfo:
     name: str
     symbol_type: str  # 'function', 'event_handler', 'variable', etc.
     line_number: int
-    signature: Optional[str] = None
-    scope: Optional[str] = None
-    declaration_position: Optional[str] = None
-    parent_symbol: Optional[str] = None
-    context: Optional[str] = None
+    signature: str | None = None
+    scope: str | None = None
+    declaration_position: str | None = None
+    parent_symbol: str | None = None
+    context: str | None = None
 
 
 @dataclass
 class VariableDeclaration(SymbolInfo):
     """Specific info for variable declarations"""
 
-    var_type: Optional[str] = None
+    var_type: str | None = None
     is_global: bool = False
 
 
@@ -28,8 +27,8 @@ class VariableDeclaration(SymbolInfo):
 class FunctionDefinition(SymbolInfo):
     """Specific info for function definitions"""
 
-    return_type: Optional[str] = None
-    parameters: Optional[List[str]] = None
+    return_type: str | None = None
+    parameters: list[str] | None = None
 
 
 @dataclass
@@ -39,5 +38,5 @@ class TypeDefinition:
     name: str
     kind: str  # 'enum' or 'struct'
     line_number: int
-    members: List[str]
+    members: list[str]
     scope: str

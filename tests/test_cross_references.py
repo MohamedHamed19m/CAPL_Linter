@@ -1,7 +1,5 @@
-import pytest
-from pathlib import Path
-from capl_symbol_db.xref import CrossReferenceBuilder
 from capl_symbol_db.database import SymbolDatabase
+from capl_symbol_db.xref import CrossReferenceBuilder
 
 
 def test_cross_references(tmp_path):

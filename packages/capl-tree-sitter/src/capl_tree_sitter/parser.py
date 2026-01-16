@@ -1,7 +1,8 @@
-import tree_sitter_c as tsc
-from tree_sitter import Language, Parser, Tree
 from pathlib import Path
-from typing import Union, Optional
+
+import tree_sitter_c as tsc
+from tree_sitter import Language, Parser
+
 from .node_types import ParseResult
 
 
@@ -12,7 +13,7 @@ class CAPLParser:
         self.language = Language(tsc.language())
         self.parser = Parser(self.language)
 
-    def parse_file(self, path: Union[str, Path]) -> ParseResult:
+    def parse_file(self, path: str | Path) -> ParseResult:
         """Parse a CAPL file from disk"""
         path = Path(path)
         with open(path, "rb") as f:
@@ -20,7 +21,7 @@ class CAPLParser:
 
         return self.parse_string(source_code)
 
-    def parse_string(self, source: Union[str, bytes]) -> ParseResult:
+    def parse_string(self, source: str | bytes) -> ParseResult:
         """Parse CAPL source code from a string or bytes"""
         if isinstance(source, str):
             source_bytes = source.encode("utf8")

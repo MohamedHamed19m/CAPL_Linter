@@ -1,4 +1,3 @@
-import pytest
 from capl_tree_sitter.parser import CAPLParser
 from capl_tree_sitter.queries import CAPLQueryHelper
 

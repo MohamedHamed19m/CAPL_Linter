@@ -1,7 +1,8 @@
 import sys
+from pathlib import Path
+
 import tree_sitter_c as tsc
 from tree_sitter import Language, Parser
-from pathlib import Path
 
 
 def dump_tree(node, source, indent=0):

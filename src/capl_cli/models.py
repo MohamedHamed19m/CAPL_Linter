@@ -1,4 +1,5 @@
-from typing import List, Optional, Literal
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 SeverityType = Literal["ERROR", "WARNING", "INFO", "STYLE"]
@@ -13,7 +14,7 @@ class LintIssue(BaseModel):
     column: int = Field(ge=0)
     rule_id: str
     message: str
-    suggestion: Optional[str] = None
+    suggestion: str | None = None
     auto_fixable: bool = False
 
 
@@ -23,4 +24,4 @@ class LinterConfig(BaseModel):
     db_path: str = "aic.db"
     severity_limit: SeverityType = "STYLE"
     fix_enabled: bool = False
-    fix_only: Optional[List[str]] = None
+    fix_only: list[str] | None = None

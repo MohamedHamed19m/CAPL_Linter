@@ -1,11 +1,12 @@
 import sqlite3
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Dict
+
+from capl_tree_sitter.ast_walker import ASTWalker
 from capl_tree_sitter.parser import CAPLParser
 from capl_tree_sitter.queries import CAPLQueryHelper
-from capl_tree_sitter.ast_walker import ASTWalker
+
 from .database import SymbolDatabase
-from dataclasses import dataclass
 
 
 @dataclass
@@ -17,7 +18,7 @@ class SymbolReference:
     line_number: int
     column: int
     reference_type: str  # 'call', 'usage', 'assignment', 'output'
-    context: Optional[str] = None
+    context: str | None = None
 
 
 class CrossReferenceBuilder:
@@ -71,7 +72,7 @@ class CrossReferenceBuilder:
 
         return len(references)
 
-    def _extract_function_calls(self, root, source, file_path) -> List[SymbolReference]:
+    def _extract_function_calls(self, root, source, file_path) -> list[SymbolReference]:
         refs = []
         query = "(call_expression function: (identifier) @func_name) @call"
         matches = self.query_helper.query(query, root)
@@ -92,7 +93,7 @@ class CrossReferenceBuilder:
                 )
         return refs
 
-    def _extract_variable_usages(self, root, source, file_path) -> List[SymbolReference]:
+    def _extract_variable_usages(self, root, source, file_path) -> list[SymbolReference]:
         refs = []
         query = "(identifier) @id"
         matches = self.query_helper.query(query, root)
@@ -136,7 +137,7 @@ class CrossReferenceBuilder:
             return False
         return True
 
-    def _get_enclosing_function(self, node, source) -> Optional[str]:
+    def _get_enclosing_function(self, node, source) -> str | None:
         func_node = ASTWalker.find_parent_of_type(node, "function_definition")
         if func_node:
             # Fallback for now: use first line

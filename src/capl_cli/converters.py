@@ -1,4 +1,5 @@
 from capl_linter.models import InternalIssue
+
 from .models import LintIssue
 
 

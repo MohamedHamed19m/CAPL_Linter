@@ -9,7 +9,7 @@ def dump_tree(node, source, indent=0):
         dump_tree(child, source, indent + 1)
 
 
-with open("examples/EnumStructTest.can", "r") as f:
+with open("examples/EnumStructTest.can") as f:
     code = f.read()
 
 language = Language(tsc.language())
