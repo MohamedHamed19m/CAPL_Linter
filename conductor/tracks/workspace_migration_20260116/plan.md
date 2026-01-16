@@ -38,19 +38,19 @@
 
 ## Phase 3: Extract Symbol Database Package
 
-- [ ] Task: Configure `capl-symbol-db` package
-    - [ ] Update `packages/capl-symbol-db/pyproject.toml` with dependency on `capl-tree-sitter`
-    - [ ] Establish package internal structure (`extractor.py`, `database.py`, `models.py`, `dependency.py`, `xref.py`)
-- [ ] Task: Extract symbol models and extraction (TDD)
-    - [ ] Define `SymbolInfo`, `VariableDeclaration`, and `FunctionDefinition` dataclasses in `models.py`
-    - [ ] Move symbol extraction logic to `extractor.py` and refactor to use `CAPLParser`
-    - [ ] Write failing extraction tests in `packages/capl-symbol-db/tests/`
-    - [ ] Implement/Refactor to pass tests and verify >85% coverage
-- [ ] Task: Extract database operations (TDD)
-    - [ ] Move SQLite schema and `SymbolDatabase` class to `database.py`
-    - [ ] Move dependency analysis from `dependency_analyzer.py` to `dependency.py`
-    - [ ] Move cross-reference tracking to `xref.py`
-    - [ ] Write database and xref tests and verify >80% coverage
+- [x] Task: Configure `capl-symbol-db` package
+    - [x] Update `packages/capl-symbol-db/pyproject.toml` with dependency on `capl-tree-sitter`
+    - [x] Establish package internal structure (`extractor.py`, `database.py`, `models.py`, `dependency.py`, `xref.py`)
+- [x] Task: Extract symbol models and extraction (TDD)
+    - [x] Define `SymbolInfo`, `VariableDeclaration`, and `FunctionDefinition` dataclasses in `models.py`
+    - [x] Move symbol extraction logic to `extractor.py` and refactor to use `CAPLParser`
+    - [x] Write failing extraction tests in `packages/capl-symbol-db/tests/`
+    - [x] Implement/Refactor to pass tests and verify >85% coverage
+- [x] Task: Extract database operations (TDD)
+    - [x] Move SQLite schema and `SymbolDatabase` class to `database.py`
+    - [x] Move dependency analysis from `dependency_analyzer.py` to `dependency.py`
+    - [x] Move cross-reference tracking to `xref.py`
+    - [x] Write database and xref tests and verify >80% coverage
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Symbol Database Package' (Protocol in workflow.md)
 
 ## Phase 4: Extract Linter Package
