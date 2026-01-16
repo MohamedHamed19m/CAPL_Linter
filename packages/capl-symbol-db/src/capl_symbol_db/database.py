@@ -66,6 +66,30 @@ class SymbolDatabase:
                     )
                 """)
 
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS symbol_references (
+                        ref_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_id INTEGER NOT NULL,
+                        symbol_name TEXT NOT NULL,
+                        line_number INTEGER,
+                        column_number INTEGER,
+                        reference_type TEXT,
+                        context TEXT,
+                        FOREIGN KEY (file_id) REFERENCES files(file_id)
+                    )
+                """)
+
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS message_usage (
+                        usage_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_id INTEGER NOT NULL,
+                        message_name TEXT NOT NULL,
+                        usage_type TEXT,
+                        line_number INTEGER,
+                        FOREIGN KEY (file_id) REFERENCES files(file_id)
+                    )
+                """)
+
                 # Indexes
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_files_path ON files(file_path)")
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_symbols_file ON symbols(file_id)")

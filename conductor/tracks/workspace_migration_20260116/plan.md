@@ -73,7 +73,7 @@
 - [ ] Task: Configure workspace root as CLI package
     - [ ] Update root `pyproject.toml` to include `pydantic>=2.0.0` and `typer`
     - [ ] Create `src/capl_cli/` structure (main, commands, formatters, models, converters)
-- [ ] Task: Implement Pydantic models and bridge (TDD)
+- [~] Task: Implement Pydantic models and bridge (TDD)
     - [ ] Create external `LintIssue` and `LinterConfig` Pydantic models in `models.py`
     - [ ] Implement Dataclass → Pydantic converters in `converters.py`
     - [ ] Write validation tests and verify zero overhead during analysis
