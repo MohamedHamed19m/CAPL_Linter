@@ -6,7 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from dependency_analyzer import CAPLDependencyAnalyzer
+from capl_analyzer.dependency_analyzer import CAPLDependencyAnalyzer
 from capl_analyzer.symbol_extractor import CAPLSymbolExtractor
 from capl_analyzer.cross_reference import CAPLCrossReferenceBuilder
 from capl_analyzer.linter import CAPLLinter

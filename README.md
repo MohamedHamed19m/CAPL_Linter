@@ -16,14 +16,14 @@
 
 ### Errors
 - ❌ Variables declared outside `variables {}` block (CAPL syntax error)
-- ❌ Undefined symbol references
-- ❌ Duplicate event handlers
+- ❌ Local variables declared after executable statements (mid-block)
+- ❌ Undefined symbol references (with support for CAPL built-ins and test functions)
+- ❌ Duplicate event handlers (excluding system events like `on start`)
 - ❌ Circular include dependencies
 
 ### Warnings
 - ⚠️ Unused variables, functions, messages, and timers
 - ⚠️ Timers set without handlers
-- ⚠️ Timer handlers that don't reset timers
 
 ### Style Issues
 - 💅 Naming conventions (global variables should start with `g`, messages with `msg`, timers with `t`)

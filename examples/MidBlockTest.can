@@ -1,0 +1,31 @@
+
+/*@@var:*/
+variables {
+  int gGlobal = 0;
+}
+/*@@end*/
+
+void RegularFunction() {
+  int x = 5;       // OK
+  write("Start");
+  
+  int y = 10;      // ERROR: Mid-block
+  y++;
+}
+
+testcase MyTest() {
+  int a = 1;       // OK
+  
+  testStep("Init", "Initializing...");
+  
+  int b = 2;       // ERROR: Mid-block
+  if (b > 0) {
+    write("Positive");
+  }
+}
+
+on message EngineState {
+  write("Msg received");
+  
+  float speed = this.Speed; // ERROR: Mid-block
+}

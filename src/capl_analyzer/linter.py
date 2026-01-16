@@ -93,8 +93,38 @@ class CAPLLinter:
         self._check_duplicate_handlers(file_path)
         self._check_missing_setTimer_in_timer_handler(file_path)
         self._check_circular_dependencies(file_path)
+        self._check_mid_block_declarations(file_path)
         
         return sorted(self.issues, key=lambda x: (x.file_path, x.line_number))
+    
+    def _check_mid_block_declarations(self, file_path: str):
+        """
+        ERROR: Variable declared after executable statements in function/testcase
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("""
+                SELECT s.symbol_name, s.line_number, s.parent_symbol, s.declaration_position
+                FROM symbols s
+                JOIN files f ON s.file_id = f.file_id
+                WHERE f.file_path = ?
+                  AND s.symbol_type = 'variable'
+                  AND s.scope = 'local'
+                  AND s.declaration_position = 'mid_block'
+            """, (file_path,))
+            
+            for var_name, line_num, parent_func, position in cursor.fetchall():
+                # Determine if parent is function or testcase
+                parent_type = "testcase" if parent_func and parent_func.startswith("testcase ") else "function"
+                
+                self.issues.append(LintIssue(
+                    severity=Severity.ERROR,
+                    file_path=file_path,
+                    line_number=line_num,
+                    column=0,
+                    rule_id="variable-mid-block",
+                    message=f"Variable '{var_name}' declared after executable statements in {parent_type} '{parent_func}'",
+                    suggestion=f"Move '{var_name}' declaration to the start of the {parent_type} block, before any executable statements"
+                ))
     
     def analyze_project(self) -> List[LintIssue]:
         """Run all lint checks on entire project"""
@@ -216,6 +246,7 @@ class CAPLLinter:
                     'write', 'output', 'setTimer', 'cancelTimer', 
                     'getValue', 'setValue', 'this',
                     'variables',  # CAPL keyword
+                    'testStep', 'testAssert', 'testWaitForTimeout', 'testWaitForSignal'
                 }
                 if symbol_name in builtins:
                     continue
@@ -253,6 +284,7 @@ class CAPLLinter:
                 JOIN files f ON sr.file_id = f.file_id
                 WHERE f.file_path = ?
                   AND sr.context LIKE '%setTimer%'
+                  AND sr.symbol_name != 'setTimer'
             """, (file_path,))
             
             timers_set = cursor.fetchall()
@@ -398,7 +430,12 @@ class CAPLLinter:
             
             duplicates = cursor.fetchall()
             
+            ignored_handlers = {'on start', 'on preStart', 'on stopMeasurement', 'on preStop'}
+            
             for handler_name, count, lines_str in duplicates:
+                if handler_name in ignored_handlers:
+                    continue
+                    
                 lines = [int(l) for l in lines_str.split(',')]
                 self.issues.append(LintIssue(
                     severity=Severity.ERROR,
@@ -412,47 +449,8 @@ class CAPLLinter:
     
     def _check_missing_setTimer_in_timer_handler(self, file_path: str):
         """Check if timer handlers forget to reset the timer"""
-        with sqlite3.connect(self.db_path) as conn:
-            # Find all timer handlers
-            cursor = conn.execute("""
-                SELECT s.symbol_name, s.line_number
-                FROM symbols s
-                JOIN files f ON s.file_id = f.file_id
-                WHERE f.file_path = ?
-                  AND s.symbol_type = 'event_handler'
-                  AND s.symbol_name LIKE 'on timer %'
-            """, (file_path,))
-            
-            timer_handlers = cursor.fetchall()
-            
-            for handler_name, line_num in timer_handlers:
-                # Extract timer name
-                timer_name = handler_name.replace('on timer ', '').strip()
-                
-                # Check if setTimer is called in this handler
-                # (This is a simplified check - in reality, we'd need to parse function body)
-                # For now, we can check if setTimer appears in references around this line
-                ref_cursor = conn.execute("""
-                    SELECT COUNT(*) FROM symbol_references sr
-                    JOIN files f ON sr.file_id = f.file_id
-                    WHERE f.file_path = ?
-                      AND sr.symbol_name IN ('setTimer', ?)
-                      AND sr.line_number >= ?
-                      AND sr.line_number <= ?
-                """, (file_path, timer_name, line_num, line_num + 20))
-                
-                has_reset = ref_cursor.fetchone()[0] > 0
-                
-                if not has_reset:
-                    self.issues.append(LintIssue(
-                        severity=Severity.WARNING,
-                        file_path=file_path,
-                        line_number=line_num,
-                        column=0,
-                        rule_id="timer-not-reset",
-                        message=f"Timer handler '{handler_name}' may not reset the timer",
-                        suggestion=f"Add: setTimer({timer_name}, <delay>); or setTimer(this, <delay>);"
-                    ))
+        # User requested to disable this warning as one-shot timers are common
+        pass
     
     def _check_circular_dependencies(self, file_path: str):
         """Check for circular include dependencies"""

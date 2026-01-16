@@ -4,7 +4,7 @@ Extracts functions, event handlers, variables, and CAPL-specific constructs
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pathlib import Path
 import sqlite3
 import tree_sitter_c as tsc
@@ -19,6 +19,8 @@ class Symbol:
     line_number: int
     signature: Optional[str] = None
     scope: Optional[str] = None  # 'global', 'variables_block', 'local'
+    declaration_position: Optional[str] = None  # 'block_start', 'mid_block'
+    parent_symbol: Optional[str] = None  # Which function/handler/testcase contains it
     
 
 class CAPLSymbolExtractor:
@@ -52,6 +54,8 @@ class CAPLSymbolExtractor:
                     line_number INTEGER,
                     signature TEXT,
                     scope TEXT,
+                    declaration_position TEXT,
+                    parent_symbol TEXT,
                     FOREIGN KEY (file_id) REFERENCES files(file_id)
                 )
             """)
@@ -81,6 +85,7 @@ class CAPLSymbolExtractor:
         symbols.extend(self._extract_functions(root, source_text))
         symbols.extend(self._extract_variables_block(root, source_text))
         symbols.extend(self._extract_global_variables(root, source_text))
+        symbols.extend(self._extract_all_local_variables(root, source_text))
         
         return symbols
     
@@ -369,6 +374,131 @@ class CAPLSymbolExtractor:
         
         # If more open than closed, we're inside the block
         return open_braces > close_braces
+
+    def _extract_all_local_variables(self, root: Node, source: str) -> List[Symbol]:
+        """
+        Extract local variables from ALL block types:
+        - Regular functions: void MyFunc() { ... }
+        - Event handlers: on message X { ... }, on timer T { ... }
+        - Testcases: testcase MyTest() { ... }
+        """
+        all_locals = []
+        
+        query = Query(self.language, """
+            (function_definition
+              body: (compound_statement) @body) @func
+        """)
+        
+        cursor = QueryCursor(query)
+        cursor.set_byte_range(0, len(source.encode('utf8')))
+        matches = cursor.matches(root)
+        
+        for pattern_index, captures_dict in matches:
+            if "func" in captures_dict and "body" in captures_dict:
+                for i, func_node in enumerate(captures_dict["func"]):
+                    # Determine block name and type
+                    block_info = self._get_block_info(func_node, source)
+                    
+                    # Analyze the body
+                    if i < len(captures_dict["body"]):
+                        body_node = captures_dict["body"][i]
+                        locals = self._analyze_block_body(
+                            body_node, source, block_info['name']
+                        )
+                        all_locals.extend(locals)
+        
+        return all_locals
+
+    def _get_block_info(self, func_node: Node, source: str) -> Dict:
+        """Get information about a block (function/testcase/handler)"""
+        func_text = source[func_node.start_byte:func_node.end_byte]
+        first_line = func_text.split('\n')[0].strip()
+        
+        if first_line.startswith('testcase '):
+            return {'type': 'testcase', 'name': first_line.split('{')[0].strip()}
+        elif first_line.startswith('on '):
+            return {'type': 'event_handler', 'name': first_line.split('{')[0].strip()}
+        else:
+            # Extract function name
+            for child in func_node.children:
+                if child.type == 'function_declarator':
+                    for subchild in child.children:
+                        if subchild.type == 'identifier':
+                            name = source[subchild.start_byte:subchild.end_byte]
+                            return {'type': 'function', 'name': name}
+            return {'type': 'unknown', 'name': '(unknown)'}
+
+    def _analyze_block_body(self, block_node: Node, source: str, block_name: str) -> List[Symbol]:
+        """
+        Analyze the order of statements in any block (function/testcase/event handler)
+        
+        Args:
+            block_node: The compound_statement node
+            source: Source code text
+            block_name: Name of the function/testcase for reference
+        
+        Returns:
+            List of Symbol objects with declaration_position set
+        """
+        symbols = []
+        first_executable_line = None
+        
+        for statement in block_node.children:
+            if statement.type == 'declaration':
+                # This is a variable declaration
+                var_info = self._parse_variable_from_node(statement, source)
+                if var_info:
+                    # Determine position
+                    position = 'block_start' if first_executable_line is None else 'mid_block'
+                    
+                    symbols.append(Symbol(
+                        name=var_info['name'],
+                        symbol_type='variable',
+                        line_number=statement.start_point[0] + 1,
+                        signature=var_info['signature'],
+                        scope='local',
+                        declaration_position=position,
+                        parent_symbol=block_name
+                    ))
+            
+            elif statement.type not in ('{', '}', 'comment'):
+                # This is an executable statement (function call, assignment, etc.)
+                if first_executable_line is None:
+                    first_executable_line = statement.start_point[0] + 1
+        
+        return symbols
+
+    def _parse_variable_from_node(self, node: Node, source: str) -> Optional[Dict]:
+        """Parse variable info from a tree-sitter declaration node"""
+        # Node text: "int x = 5;"
+        text = source[node.start_byte:node.end_byte]
+        
+        # Find identifier in declarator
+        for child in node.children:
+            if child.type == 'init_declarator':
+                for subchild in child.children:
+                    if subchild.type == 'identifier':
+                        name = source[subchild.start_byte:subchild.end_byte]
+                        return {
+                            'name': name,
+                            'signature': text.strip()
+                        }
+            elif child.type == 'identifier': # Simple declaration: int x;
+                 name = source[child.start_byte:child.end_byte]
+                 return {
+                    'name': name,
+                    'signature': text.strip()
+                }
+
+        # Handle simple case where children structure is simpler
+        # For "int x;" tree-sitter might just have type and identifier siblings if inside declaration
+        # But usually 'declaration' -> 'init_declarator' -> 'identifier'
+        # Or 'declaration' -> 'identifier' (if no init)
+        
+        # Fallback to text parsing if needed, but tree traversal is safer
+        # Let's try to find any identifier that is not the type
+        return self._parse_variable_declaration(text.strip(), 0) # Reuse text parser as fallback
+
     
     def store_symbols(self, file_path: str) -> int:
         """
@@ -399,10 +529,11 @@ class CAPLSymbolExtractor:
             for symbol in symbols:
                 conn.execute("""
                     INSERT INTO symbols 
-                    (file_id, symbol_name, symbol_type, line_number, signature, scope)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    (file_id, symbol_name, symbol_type, line_number, signature, scope, declaration_position, parent_symbol)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (file_id, symbol.name, symbol.symbol_type, 
-                      symbol.line_number, symbol.signature, symbol.scope))
+                      symbol.line_number, symbol.signature, symbol.scope, 
+                      symbol.declaration_position, symbol.parent_symbol))
             
             conn.commit()
         
@@ -498,6 +629,14 @@ def update_database_schema(db_path: str = "aic.db"):
         if 'scope' not in columns:
             conn.execute("ALTER TABLE symbols ADD COLUMN scope TEXT")
             print("Added 'scope' column to symbols table")
+            
+        if 'declaration_position' not in columns:
+            conn.execute("ALTER TABLE symbols ADD COLUMN declaration_position TEXT")
+            print("Added 'declaration_position' column to symbols table")
+            
+        if 'parent_symbol' not in columns:
+            conn.execute("ALTER TABLE symbols ADD COLUMN parent_symbol TEXT")
+            print("Added 'parent_symbol' column to symbols table")
         
         conn.commit()
 
