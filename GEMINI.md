@@ -2,64 +2,85 @@
 
 ## Project Overview
 
-**CAPL Analyzer** is a static analysis and linting tool for CAPL (CANoe/CANalyzer Programming Language) files (`.can`, `.cin`). It parses CAPL code to detect common errors, enforce coding standards, and analyze dependencies. It is built with Python and leverages `tree-sitter-capl` (via `tree-sitter-c` as a base) for robust parsing.
+**CAPL Analyzer** is a static analysis and linting tool for CAPL (CANoe/CANalyzer Programming Language) files. It is now organized as a **UV Workspace** (monorepo) to ensure modularity, isolated testing, and clear dependency management.
 
-**Key Features:**
-*   **Static Analysis/Linting:** Detects errors (e.g., variables outside `variables {}` block, missing type keywords), warnings (unused variables), and style issues.
-*   **Auto-Fix System:** Automatically fixes common issues like missing keywords, forbidden syntax, and variable placement.
-*   **Symbol Extraction:** Extracts variables, functions, event handlers, enums, and structs.
-*   **Dependency Analysis:** Tracks `#include` dependencies and detects circular references.
-*   **Cross-Reference:** Finds symbol usages and builds call graphs.
+## Architecture: UV Workspace
 
-**Architecture:**
-*   **Core Logic:** `src/capl_analyzer/` contains the main logic.
-    *   `linter.py`: The main linter engine and report generator.
-    *   `autofix.py`: Logic for automatically fixing reported issues.
-    *   `symbol_extractor.py`: Extracts symbols using tree-sitter.
-    *   `dependency_analyzer.py`: Handles include graphs.
-    *   `cross_reference.py`: Builds cross-reference databases.
-*   **Database:** Uses an SQLite database (`aic.db`) to store parsed symbols and dependencies for fast access and cross-file analysis.
-*   **CLI:** `cli.py` provides the command-line interface (`capl-analyze`, `capl-lint`).
+The codebase is split into independent library packages and a root CLI package:
+
+### 1. Library Packages (in `packages/`)
+*   **`capl-tree-sitter`**: Core parsing layer.
+    *   `parser.py`: High-level `CAPLParser` class.
+    *   `queries.py`: `CAPLQueryHelper` for executing S-expression queries.
+    *   `ast_walker.py`: AST traversal utilities.
+    *   `node_types.py`: Internal **dataclasses** for AST nodes and matches.
+*   **`capl-symbol-db`**: Persistence and extraction layer.
+    *   `extractor.py`: Extracts symbols, variables, and type definitions.
+    *   `database.py`: Central SQLite (`aic.db`) schema management.
+    *   `dependency.py`: Transitive `#include` analysis.
+    *   `xref.py`: Cross-reference and call graph builder.
+*   **`capl-linter`**: Analysis and correction layer.
+    *   `engine.py`: `LinterEngine` coordinates analysis and rule execution.
+    *   `registry.py`: `RuleRegistry` for managing pluggable lint rules.
+    *   `autofix.py`: `AutoFixEngine` for iterative code correction.
+    *   `rules/`: Individual rule implementations (e.g., `syntax_rules.py`, `variable_rules.py`).
+
+### 2. CLI Package (Root)
+*   **`src/capl_cli/`**: The `capl-cli` package.
+    *   `main.py`: Entry point using `typer`.
+    *   `models.py`: External **Pydantic** models for API/JSON responses.
+    *   `converters.py`: Bridge logic (Dataclass → Pydantic).
+
+## Data Architecture
+*   **Internal Processing**: All logic within library packages uses Python `dataclasses` for high performance.
+*   **External Interface**: The CLI converts internal dataclasses to Pydantic models at the boundary for validation and JSON serialization.
+
+## How to Add New Features
+
+### Adding a New Lint Rule
+1.  Create a new rule class in `packages/capl-linter/src/capl_linter/rules/`.
+2.  Inherit from `BaseRule` and implement `rule_id` and `check(file_path, db)`.
+3.  Register the rule in `packages/capl-linter/src/capl_linter/registry.py`.
+
+### Adding New Auto-Fix Logic
+1.  Add a new fixer method to `AutoFixEngine` in `packages/capl-linter/src/capl_linter/autofix.py`.
+2.  Register the rule ID in the `self._fixers` dictionary.
+3.  The CLI's iterative loop handles re-analysis between fix passes automatically.
+
+### Adding New Symbol Extraction
+1.  Update the query or logic in `packages/capl-symbol-db/src/capl_symbol_db/extractor.py`.
+2.  If storing new data, update the schema in `packages/capl-symbol-db/src/capl_symbol_db/database.py`.
 
 ## Building and Running
 
-This project uses `uv` for dependency management and execution.
+### Setup
+```bash
+# Sync entire workspace (creates venv and installs all packages)
+uv sync
 
-**Prerequisites:**
-*   Python 3.10+
-*   `uv` (Universal Python Package Manager)
+# Update all dependencies
+uv lock --upgrade
+```
 
-**Common Commands:**
-
-*   **Install Dependencies (Editable Mode):**
+### Common Commands
+*   **Run Linter with Auto-Fix:**
     ```bash
-    uv pip install -e .
-    # Or with dev dependencies
-    uv pip install -e ".[dev]"
+    uv run capl-lint lint --fix <file.can>
     ```
-
-*   **Run Linter:**
-    ```bash
-    uv run capl-lint <file.can>
-    # Run on entire project
-    uv run capl-lint --project
-    # Run with auto-fix
-    uv run capl-lint --fix <file.can>
-    ```
-
 *   **Run Analysis (Dependency/Symbol Dump):**
     ```bash
     uv run capl-analyze analyze <file.can>
     ```
-
-*   **Run Tests:**
+*   **Run All Tests:**
     ```bash
     uv run pytest
     ```
+*   **Run Tests for a Specific Package:**
+    ```bash
+    uv run --package capl-linter pytest
+    ```
 
 ## Development Conventions
-
-*   **Code Style:** The project uses `ruff` and `ruff format` (implied by `pyproject.toml` config) for formatting and linting Python code. Ensure code is typed and formatted before committing.
-*   **Database Schema:** The SQLite schema is defined in `symbol_extractor.py` and other modules. When adding new symbol types or features, ensure the schema `CREATE TABLE` and `INSERT` statements are updated.
-*   **Auto-Fix Strategy:** Auto-fixes are implemented in `autofix.py`. Complex fixes that shift line numbers (like moving variables) are handled iteratively by the linter loop to ensuring safety.
-*   **Parsing:** All parsing is done via `tree-sitter`. Do not use regex for parsing complex code structures; rely on the AST.
+*   **Grammar**: We use `tree-sitter-c` as a base. Keywords like `variables` and `on start` are handled as errors or via sibling text lookups.
+*   **Parsing**: Use `CAPLQueryHelper` for complex structure matching. Avoid regex for nested code.
+*   **Iterative Fixes**: Always assume a fix might shift line numbers. The iterative loop (`max_passes=10`) in `main.py` is the safety mechanism.

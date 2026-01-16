@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Optional
 from .models import SymbolInfo, TypeDefinition
 
+
 class SymbolDatabase:
     """Manages SQLite database for CAPL symbols and files"""
 
@@ -94,9 +95,15 @@ class SymbolDatabase:
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_files_path ON files(file_path)")
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_symbols_file ON symbols(file_id)")
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_symbols_name ON symbols(symbol_name)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_includes_source ON includes(source_file_id)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_includes_target ON includes(included_file_id)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_types_name ON type_definitions(type_name)")
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_includes_source ON includes(source_file_id)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_includes_target ON includes(included_file_id)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_types_name ON type_definitions(type_name)"
+                )
         finally:
             conn.close()
 
@@ -104,18 +111,21 @@ class SymbolDatabase:
         """Store file info and return its ID"""
         file_path_abs = str(file_path.resolve())
         file_hash = hashlib.md5(source_code).hexdigest()
-        
+
         conn = sqlite3.connect(self.db_path)
         try:
             with conn:
-                cursor = conn.execute("""
+                cursor = conn.execute(
+                    """
                     INSERT INTO files (file_path, parse_success, file_hash)
                     VALUES (?, 1, ?)
                     ON CONFLICT(file_path) DO UPDATE SET 
                         last_parsed = CURRENT_TIMESTAMP,
                         file_hash = excluded.file_hash
                     RETURNING file_id
-                """, (file_path_abs, file_hash))
+                """,
+                    (file_path_abs, file_hash),
+                )
                 return cursor.fetchone()[0]
         finally:
             conn.close()
@@ -127,15 +137,24 @@ class SymbolDatabase:
             with conn:
                 conn.execute("DELETE FROM symbols WHERE file_id = ?", (file_id,))
                 for sym in symbols:
-                    conn.execute("""
+                    conn.execute(
+                        """
                         INSERT INTO symbols (file_id, symbol_name, symbol_type, line_number, 
                                           signature, scope, declaration_position, parent_symbol, context)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        file_id, sym.name, sym.symbol_type, sym.line_number,
-                        sym.signature, sym.scope, sym.declaration_position,
-                        sym.parent_symbol, sym.context
-                    ))
+                    """,
+                        (
+                            file_id,
+                            sym.name,
+                            sym.symbol_type,
+                            sym.line_number,
+                            sym.signature,
+                            sym.scope,
+                            sym.declaration_position,
+                            sym.parent_symbol,
+                            sym.context,
+                        ),
+                    )
         finally:
             conn.close()
 
@@ -144,7 +163,9 @@ class SymbolDatabase:
         file_path_abs = str(file_path.resolve())
         conn = sqlite3.connect(self.db_path)
         try:
-            cursor = conn.execute("SELECT file_hash FROM files WHERE file_path = ?", (file_path_abs,))
+            cursor = conn.execute(
+                "SELECT file_hash FROM files WHERE file_path = ?", (file_path_abs,)
+            )
             result = cursor.fetchone()
             return result[0] if result else None
         finally:

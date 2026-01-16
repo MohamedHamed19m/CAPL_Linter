@@ -3,10 +3,12 @@ from pathlib import Path
 from capl_symbol_db.database import SymbolDatabase
 from .models import InternalIssue
 
+
 class LintRule(Protocol):
     """Protocol for a linting rule"""
-    def check(self, file_path: Path, db: SymbolDatabase) -> List[InternalIssue]:
-        ...
+
+    def check(self, file_path: Path, db: SymbolDatabase) -> List[InternalIssue]: ...
+
 
 class RuleRegistry:
     """Registry for managing and loading linting rules"""
@@ -25,6 +27,7 @@ class RuleRegistry:
         from .rules.syntax_rules import ForbiddenSyntaxRule, GlobalTypeDefinitionRule
         from .rules.variable_rules import VariablePlacementRule
         from .rules.type_rules import TypeUsageRule
+
         self.register(ForbiddenSyntaxRule())
         self.register(GlobalTypeDefinitionRule())
         self.register(VariablePlacementRule())

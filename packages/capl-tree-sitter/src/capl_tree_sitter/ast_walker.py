@@ -1,6 +1,7 @@
 from tree_sitter import Node
 from typing import Callable, Optional, List
 
+
 class ASTWalker:
     """Utilities for traversing and searching the CAPL AST"""
 
@@ -33,10 +34,10 @@ class ASTWalker:
     def find_all_by_type(node: Node, type_name: str) -> List[Node]:
         """Find all descendant nodes of a specific type"""
         results = []
-        
+
         def check(n):
             if n.type == type_name:
                 results.append(n)
-                
+
         ASTWalker.walk(node, check)
         return results

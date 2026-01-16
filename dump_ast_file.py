@@ -1,5 +1,7 @@
+import sys
 import tree_sitter_c as tsc
 from tree_sitter import Language, Parser
+from pathlib import Path
 
 
 def dump_tree(node, source, indent=0):
@@ -10,16 +12,12 @@ def dump_tree(node, source, indent=0):
         dump_tree(child, source, indent + 1)
 
 
-code = """
-variables {
-  int gVar;
-}
+if len(sys.argv) < 2:
+    print("Usage: python dump_ast_file.py <file>")
+    sys.exit(1)
 
-on start {
-  int lVar;
-  write("Hi");
-}
-"""
+file_path = Path(sys.argv[1])
+code = file_path.read_text(encoding="utf-8")
 
 language = Language(tsc.language())
 parser = Parser(language)
