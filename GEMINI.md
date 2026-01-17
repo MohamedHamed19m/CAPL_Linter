@@ -6,50 +6,47 @@
 
 ## Architecture: UV Workspace
 
-The codebase is split into independent library packages and a root CLI package:
+The codebase is split into independent library packages and a root CLI package, following a **"Neutral Fact"** architecture where the database stores raw attributes and the linter performs judgment.
 
 ### 1. Library Packages (in `packages/`)
 *   **`capl-tree-sitter`**: Core parsing layer.
     *   `parser.py`: High-level `CAPLParser` class.
-    *   `queries.py`: `CAPLQueryHelper` for executing S-expression queries.
-    *   `ast_walker.py`: AST traversal utilities.
-    *   `node_types.py`: Internal **dataclasses** for AST nodes and matches.
+    *   `queries.py`: `CAPLQueryHelper` for S-expression queries.
+    *   `capl_patterns.py`: Recognition of CAPL-specific AST structures.
 *   **`capl-symbol-db`**: Persistence and extraction layer.
-    *   `extractor.py`: Extracts symbols, variables, and type definitions.
-    *   `database.py`: Central SQLite (`aic.db`) schema management.
-    *   `dependency.py`: Transitive `#include` analysis.
+    *   `extractor.py`: Extracts **neutral facts** (e.g., `has_body`, `param_count`) without performing validation.
+    *   `database.py`: Manages `aic.db` with support for recursive CTEs for transitive includes.
     *   `xref.py`: Cross-reference and call graph builder.
 *   **`capl-linter`**: Analysis and correction layer.
-    *   `engine.py`: `LinterEngine` coordinates analysis and rule execution.
-    *   `registry.py`: `RuleRegistry` for managing pluggable lint rules.
-    *   `autofix.py`: `AutoFixEngine` for iterative code correction.
-    *   `rules/`: Individual rule implementations (e.g., `syntax_rules.py`, `variable_rules.py`).
+    *   `engine.py`: `LinterEngine` coordinates multi-pass analysis and rule execution.
+    *   `builtins.py`: List of CAPL standard library functions and keywords.
+    *   `autofix.py`: `AutoFixEngine` delegates to rule-specific `fix()` methods.
+    *   `rules/`: Individual rule implementations categorized into `syntax`, `type`, `variable`, and `semantic` rules.
 
 ### 2. CLI Package (Root)
 *   **`src/capl_cli/`**: The `capl-cli` package.
-    *   `main.py`: Entry point using `typer`.
-    *   `models.py`: External **Pydantic** models for API/JSON responses.
-    *   `converters.py`: Bridge logic (Dataclass → Pydantic).
+    *   `main.py`: Entry point with support for `--project` and `--fix`.
+    *   `config.py`: Loads configuration from `.capl-lint.toml`.
 
 ## Data Architecture
-*   **Internal Processing**: All logic within library packages uses Python `dataclasses` for high performance.
-*   **External Interface**: The CLI converts internal dataclasses to Pydantic models at the boundary for validation and JSON serialization.
+*   **Internal Processing**: Uses Python `dataclasses`.
+*   **Fact Neutrality**: The extractor MUST NOT validate. It only records state (e.g., `has_body=False`). The Linter rules perform all judgment based on these facts or by re-parsing the AST for syntax patterns.
 
 ## How to Add New Features
 
 ### Adding a New Lint Rule
 1.  Create a new rule class in `packages/capl-linter/src/capl_linter/rules/`.
 2.  Inherit from `BaseRule` and implement:
-    *   `rule_id`: Standardized code (e.g., `E001` for Errors, `W101` for Warnings, `S201` for Style).
-    *   `name`: Human-readable slug (e.g., `extern-keyword`).
-    *   `severity`: Use `Severity` enum (`ERROR`, `WARNING`, `STYLE`).
-    *   `check(file_path, db)`: Use `RuleQueryHelper` for optimized database access instead of raw SQL.
+    *   `rule_id`: Standardized code (e.g., `E001`).
+    *   `name`: Human-readable slug.
+    *   `severity`: `Severity` enum.
+    *   `check(file_path, db)`: Re-parse via `CAPLParser` for syntax rules, or query `db.get_visible_symbols()` for semantic rules.
 3.  Register the rule in `packages/capl-linter/src/capl_linter/registry.py`.
 
 ### Adding New Auto-Fix Logic
-1.  Add a new fixer method to `AutoFixEngine` in `packages/capl-linter/src/capl_linter/autofix.py`.
-2.  Register the rule ID in the `self._fixers` dictionary.
-3.  The CLI's iterative loop handles re-analysis between fix passes automatically.
+1.  Implement the `fix(file_path, issues)` method within your rule class.
+2.  Set `auto_fixable = True` in the rule class.
+3.  The `AutoFixEngine` will automatically discover and execute the fix during the iterative loop.
 
 ### Adding New Symbol Extraction
 1.  Update the query or logic in `packages/capl-symbol-db/src/capl_symbol_db/extractor.py`.

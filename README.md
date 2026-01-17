@@ -9,23 +9,26 @@
 
 ## 🚀 Features
 
-- **Auto-Fix System**: Automatically resolves common linting issues.
-- **Dependency Analysis**: Track `#include` relationships and build dependency graphs
-- **Symbol Extraction**: Extract functions, variables, event handlers, and CAPL-specific constructs
-- **Cross-Reference System**: Find all references to any symbol across your codebase
-- **Static Analysis / Linter**: Detect common issues and enforce coding standards
+- **Auto-Fix System**: Automatically resolves common linting issues with rule-specific fix logic.
+- **Dependency Analysis**: Track `#include` relationships and build transitive visibility graphs.
+- **Symbol Extraction**: Extract functions, parameters, event handlers, and enum members.
+- **Cross-Reference System**: Find all references to any symbol across your codebase.
+- **Static Analysis / Linter**: Detect common issues and enforce coding standards across multiple files.
+- **Configuration Support**: Customize behavior via `.capl-lint.toml`.
 
 ## 📋 What Can It Detect?
 
 ### Errors
-- ❌ Variables declared outside `variables {}` block (CAPL syntax error)
+- ❌ Variables declared outside `variables {}` block
 - ❌ Local variables declared after executable statements (mid-block)
-- ❌ Undefined symbol references (with support for CAPL built-ins, test functions, and enum members)
-- ❌ Duplicate event handlers (excluding system events like `on start`)
+- ❌ Undefined symbol references (with transitive include support and CAPL built-ins)
+- ❌ Duplicate function definitions (across project)
 - ❌ Circular include dependencies
 - ❌ Missing `enum` or `struct` keywords in declarations
-- ❌ Forbidden syntax: function declarations (forward declarations)
+- ❌ Forbidden syntax: function forward declarations
 - ❌ Forbidden syntax: `extern` keyword usage
+- ❌ Forbidden syntax: arrow operator `->` (must use dot `.`)
+- ❌ Forbidden syntax: struct pointers in parameters
 
 ### Warnings
 - ⚠️ Unused variables, functions, messages, and timers
