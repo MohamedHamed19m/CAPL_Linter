@@ -1,49 +1,63 @@
-import sqlite3
 from pathlib import Path
 
 from capl_symbol_db.database import SymbolDatabase
 
-from ..models import InternalIssue
+from ..models import InternalIssue, Severity
 from .base import BaseRule
+from .db_helpers import RuleQueryHelper
 
 
-class TypeUsageRule(BaseRule):
-    @property
-    def rule_id(self) -> str:
-        return "type-usage"
+class MissingEnumKeywordRule(BaseRule):
+    """Detect enum types used without 'enum' keyword."""
+
+    rule_id = "E004"
+    name = "missing-enum-keyword"
+    severity = Severity.ERROR
+    auto_fixable = True
+    description = "Enum types must be declared with 'enum' keyword."
 
     def check(self, file_path: Path, db: SymbolDatabase) -> list[InternalIssue]:
+        helper = RuleQueryHelper(db, file_path)
         issues = []
-        file_path_abs = str(file_path.resolve())
 
-        conn = sqlite3.connect(db.db_path)
-        try:
-            cursor = conn.execute(
-                """
-                SELECT s.symbol_name, s.line_number, s.signature, s.context
-                FROM symbols s
-                JOIN files f ON s.file_id = f.file_id
-                WHERE f.file_path = ? AND s.symbol_type = 'type_usage_error'
-            """,
-                (file_path_abs,),
-            )
-
-            for var_name, line, sig, context in cursor.fetchall():
-                type_kind = context.replace("missing_", "").replace("_keyword", "")
-                type_name = sig.split()[0]  # Heuristic
-
+        for var_name, line, context, signature in helper.get_type_usage_errors():
+            if "enum" in context:
+                type_name = signature.split()[0] if signature else "unknown"
                 issues.append(
-                    InternalIssue(
+                    self._create_issue(
                         file_path=file_path,
                         line=line,
-                        rule_id=f"missing-{type_kind}-keyword",
-                        message=f"Type '{type_name}' used without '{type_kind}' keyword in declaration of '{var_name}'",
-                        severity="error",
-                        auto_fixable=True,
+                        message=f"Type '{type_name}' used without 'enum' keyword in declaration of '{var_name}'",
                         context=context,
                     )
                 )
-        finally:
-            conn.close()
+
+        return issues
+
+
+class MissingStructKeywordRule(BaseRule):
+    """Detect struct types used without 'struct' keyword."""
+
+    rule_id = "E005"
+    name = "missing-struct-keyword"
+    severity = Severity.ERROR
+    auto_fixable = True
+    description = "Struct types must be declared with 'struct' keyword."
+
+    def check(self, file_path: Path, db: SymbolDatabase) -> list[InternalIssue]:
+        helper = RuleQueryHelper(db, file_path)
+        issues = []
+
+        for var_name, line, context, signature in helper.get_type_usage_errors():
+            if "struct" in context:
+                type_name = signature.split()[0] if signature else "unknown"
+                issues.append(
+                    self._create_issue(
+                        file_path=file_path,
+                        line=line,
+                        message=f"Type '{type_name}' used without 'struct' keyword in declaration of '{var_name}'",
+                        context=context,
+                    )
+                )
 
         return issues

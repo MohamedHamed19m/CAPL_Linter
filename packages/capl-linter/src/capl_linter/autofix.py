@@ -10,14 +10,13 @@ class AutoFixEngine:
 
     def __init__(self):
         self._fixers: dict[str, Callable[[str, list[InternalIssue]], str]] = {
-            "variable-outside-block": self._fix_variable_outside_block,
-            "variable-mid-block": self._fix_variable_mid_block,
-            "missing-enum-keyword": self._fix_missing_type_keyword,
-            "missing-struct-keyword": self._fix_missing_type_keyword,
-            "function-declaration": self._fix_function_declaration,
-            "global-enum-definition": self._fix_global_type_definition,
-            "global-struct-definition": self._fix_global_type_definition,
-            "extern-keyword": self._fix_extern_keyword,
+            "E006": self._fix_variable_outside_block,
+            "E007": self._fix_variable_mid_block,
+            "E004": self._fix_missing_type_keyword,
+            "E005": self._fix_missing_type_keyword,
+            "E002": self._fix_function_declaration,
+            "E003": self._fix_global_type_definition,
+            "E001": self._fix_extern_keyword,
         }
 
     def can_fix(self, rule_id: str) -> bool:
@@ -105,7 +104,7 @@ class AutoFixEngine:
         for issue in sorted(issues, key=lambda x: x.line, reverse=True):
             idx = issue.line - 1
             if idx < len(lines):
-                keyword = "enum" if "enum" in issue.rule_id else "struct"
+                keyword = "enum" if issue.rule_id == "E004" else "struct"
                 # Extraction of type name from message is a bit hacky but consistent with old logic
                 match = re.search(r"Type '(\w+)'", issue.message)
                 if match:
@@ -206,7 +205,7 @@ class AutoFixEngine:
 
     # Helpers
     def _find_variables_block_range(self, lines: list[str]):
-        start = end = None
+        start = None
         brace_count = 0
         for i, line in enumerate(lines):
             if "variables" in line and "{" in line:

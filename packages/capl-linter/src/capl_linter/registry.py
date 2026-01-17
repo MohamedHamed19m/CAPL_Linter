@@ -1,36 +1,77 @@
-from pathlib import Path
-from typing import Protocol
-
-from capl_symbol_db.database import SymbolDatabase
-
-from .models import InternalIssue
-
-
-class LintRule(Protocol):
-    """Protocol for a linting rule"""
-
-    def check(self, file_path: Path, db: SymbolDatabase) -> list[InternalIssue]: ...
+from .rules.base import BaseRule
+from .rules.syntax_rules import (
+    ExternKeywordRule,
+    FunctionDeclarationRule,
+    GlobalTypeDefinitionRule,
+)
+from .rules.type_rules import (
+    MissingEnumKeywordRule,
+    MissingStructKeywordRule,
+)
+from .rules.variable_rules import (
+    MidBlockVariableRule,
+    VariableOutsideBlockRule,
+)
 
 
 class RuleRegistry:
-    """Registry for managing and loading linting rules"""
+    """Central registry for all linting rules."""
 
     def __init__(self):
-        self._rules: list[LintRule] = []
-        self._load_builtin_rules()
+        self._rules: dict[str, BaseRule] = {}
+        self._register_builtin_rules()
 
-    def register(self, rule: LintRule):
-        self._rules.append(rule)
+    def _register_builtin_rules(self):
+        """Auto-register all built-in rules."""
+        builtin_rules = [
+            # Syntax Rules (E001-E003)
+            ExternKeywordRule(),
+            FunctionDeclarationRule(),
+            GlobalTypeDefinitionRule(),
+            # Type Rules (E004-E005)
+            MissingEnumKeywordRule(),
+            MissingStructKeywordRule(),
+            # Variable Rules (E006-E007)
+            VariableOutsideBlockRule(),
+            MidBlockVariableRule(),
+        ]
 
-    def get_all_rules(self) -> list[LintRule]:
-        return self._rules
+        for rule in builtin_rules:
+            self._rules[rule.rule_id] = rule
 
-    def _load_builtin_rules(self):
-        from .rules.syntax_rules import ForbiddenSyntaxRule, GlobalTypeDefinitionRule
-        from .rules.type_rules import TypeUsageRule
-        from .rules.variable_rules import VariablePlacementRule
+    def get_rule(self, rule_id: str) -> BaseRule | None:
+        """Get a specific rule by ID."""
+        return self._rules.get(rule_id)
 
-        self.register(ForbiddenSyntaxRule())
-        self.register(GlobalTypeDefinitionRule())
-        self.register(VariablePlacementRule())
-        self.register(TypeUsageRule())
+    def get_all_rules(self) -> list[BaseRule]:
+        """Get all registered rules."""
+        return list(self._rules.values())
+
+    def get_enabled_rules(
+        self, select: list[str] | None = None, ignore: list[str] | None = None
+    ) -> list[BaseRule]:
+        """Get rules based on selection/ignore filters.
+
+        Args:
+            select: List of rule categories ('E', 'W', 'S') or specific IDs ('E001')
+            ignore: List of specific rule IDs to ignore
+        """
+        select = select or ["E", "W"]  # Default: errors and warnings
+        ignore = ignore or []
+
+        enabled = []
+        for rule in self._rules.values():
+            # Check if ignored
+            if rule.rule_id in ignore:
+                continue
+
+            # Check if selected (by category or specific ID)
+            category = rule.rule_id[0]  # 'E', 'W', or 'S'
+            if category in select or rule.rule_id in select:
+                enabled.append(rule)
+
+        return enabled
+
+
+# Global singleton
+registry = RuleRegistry()

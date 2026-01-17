@@ -1,99 +1,92 @@
-import sqlite3
 from pathlib import Path
 
 from capl_symbol_db.database import SymbolDatabase
 
-from ..models import InternalIssue
+from ..models import InternalIssue, Severity
 from .base import BaseRule
+from .db_helpers import RuleQueryHelper
 
 
-class ForbiddenSyntaxRule(BaseRule):
-    @property
-    def rule_id(self) -> str:
-        return "forbidden-syntax"
+class ExternKeywordRule(BaseRule):
+    """Detect and remove 'extern' keyword (not supported in CAPL)."""
+
+    rule_id = "E001"
+    name = "extern-keyword"
+    severity = Severity.ERROR
+    auto_fixable = True
+    description = "The 'extern' keyword is not supported in CAPL and must be removed."
 
     def check(self, file_path: Path, db: SymbolDatabase) -> list[InternalIssue]:
+        helper = RuleQueryHelper(db, file_path)
         issues = []
-        file_path_abs = str(file_path.resolve())
 
-        conn = sqlite3.connect(db.db_path)
-        try:
-            cursor = conn.execute(
-                """
-                SELECT s.symbol_name, s.line_number, s.context
-                FROM symbols s
-                JOIN files f ON s.file_id = f.file_id
-                WHERE f.file_path = ? AND s.symbol_type = 'forbidden_syntax'
-            """,
-                (file_path_abs,),
-            )
-
-            for name, line, context in cursor.fetchall():
-                rule_id = (
-                    "function-declaration"
-                    if context == "function_declaration"
-                    else "extern-keyword"
-                )
-                msg = f"Forbidden syntax: {context.replace('_', ' ')}"
-
+        for name, line, context in helper.get_forbidden_syntax():
+            if context == "extern_keyword":
                 issues.append(
-                    InternalIssue(
+                    self._create_issue(
                         file_path=file_path,
                         line=line,
-                        rule_id=rule_id,
-                        message=msg,
-                        severity="error",
-                        auto_fixable=True,
+                        message="'extern' keyword is not supported in CAPL",
                         context=context,
                     )
                 )
-        finally:
-            conn.close()
+
+        return issues
+
+
+class FunctionDeclarationRule(BaseRule):
+    """Detect function forward declarations (not allowed in CAPL)."""
+
+    rule_id = "E002"
+    name = "function-declaration"
+    severity = Severity.ERROR
+    auto_fixable = True
+    description = "CAPL does not support function prototypes/forward declarations."
+
+    def check(self, file_path: Path, db: SymbolDatabase) -> list[InternalIssue]:
+        helper = RuleQueryHelper(db, file_path)
+        issues = []
+
+        for name, line, context in helper.get_forbidden_syntax():
+            if context == "function_declaration":
+                issues.append(
+                    self._create_issue(
+                        file_path=file_path,
+                        line=line,
+                        message=f"Function forward declaration '{name}' is not allowed in CAPL",
+                        context=context,
+                    )
+                )
 
         return issues
 
 
 class GlobalTypeDefinitionRule(BaseRule):
-    @property
-    def rule_id(self) -> str:
-        return "global-type-definition"
+    """Detect enum/struct defined outside variables{} block."""
+
+    rule_id = "E003"
+    name = "global-type-definition"
+    severity = Severity.ERROR
+    auto_fixable = True
+    description = "Type definitions must be inside 'variables {}' block."
 
     def check(self, file_path: Path, db: SymbolDatabase) -> list[InternalIssue]:
+        helper = RuleQueryHelper(db, file_path)
         issues = []
-        file_path_abs = str(file_path.resolve())
 
-        conn = sqlite3.connect(db.db_path)
-        try:
-            # We look for symbols that are enums/structs defined at global scope
-            # In our current extractor, these are stored in 'symbols' table with context 'enum_definition' or 'struct_definition'
-            # and scope 'global'.
-            # Note: We might want to use a dedicated 'type_definitions' table later as in old code.
-            cursor = conn.execute(
-                """
-                SELECT s.symbol_name, s.line_number, s.context
-                FROM symbols s
-                JOIN files f ON s.file_id = f.file_id
-                WHERE f.file_path = ? 
-                  AND s.scope = 'global'
-                  AND s.context IN ('enum_definition', 'struct_definition')
-            """,
-                (file_path_abs,),
-            )
+        results = helper.query_symbols(
+            scope="global", contexts=["enum_definition", "struct_definition"]
+        )
 
-            for name, line, context in cursor.fetchall():
-                type_kind = "enum" if context == "enum_definition" else "struct"
-                issues.append(
-                    InternalIssue(
-                        file_path=file_path,
-                        line=line,
-                        rule_id=f"global-{type_kind}-definition",
-                        message=f"{type_kind.capitalize()} '{name}' defined outside 'variables {{}}' block",
-                        severity="error",
-                        auto_fixable=True,
-                        context=context,
-                    )
+        for name, line, context, _, _, _ in results:
+            type_kind = "enum" if context == "enum_definition" else "struct"
+            issues.append(
+                self._create_issue(
+                    file_path=file_path,
+                    line=line,
+                    message=f"{type_kind.capitalize()} '{name}' must be defined inside 'variables {{}}' block",
+                    context=context,
                 )
-        finally:
-            conn.close()
+            )
 
         return issues

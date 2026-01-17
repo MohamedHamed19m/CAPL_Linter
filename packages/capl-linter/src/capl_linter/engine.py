@@ -39,7 +39,7 @@ class LinterEngine:
         for rule in self.registry.get_all_rules():
             self.issues.extend(rule.check(file_path, self.db))
 
-        return sorted(self.issues, key=lambda x: x.line)
+        return sorted(self.issues, key=lambda x: x.sort_key)
 
     def _needs_analysis(self, file_path: Path) -> bool:
         stored_hash = self.db.get_file_hash(file_path)

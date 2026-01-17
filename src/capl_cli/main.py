@@ -56,13 +56,12 @@ def lint(
             # Pick one rule type to fix at a time
             # Priority list for fixes
             priority = [
-                "missing-enum-keyword",
-                "missing-struct-keyword",
-                "function-declaration",
-                "global-enum-definition",
-                "global-struct-definition",
-                "variable-outside-block",
-                "variable-mid-block",
+                "E004",  # missing-enum-keyword
+                "E005",  # missing-struct-keyword
+                "E002",  # function-declaration
+                "E003",  # global-type-definition
+                "E006",  # variable-outside-block
+                "E007",  # variable-mid-block
             ]
 
             target_rule = None

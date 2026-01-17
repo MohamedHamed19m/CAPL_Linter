@@ -38,4 +38,4 @@ def test_cli_lint_extern(tmp_path):
     result = runner.invoke(app, ["lint", str(file_path), "--db", str(db_path)])
     assert result.exit_code == 1  # Exit code 1 because of ERROR
     assert "ERROR" in result.stdout
-    assert "extern-keyword" in result.stdout
+    assert "E001" in result.stdout

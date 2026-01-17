@@ -23,5 +23,5 @@ def test_linter_forbidden_syntax(tmp_path):
     issues = engine.analyze_file(file_path)
 
     assert len(issues) == 1
-    assert issues[0].rule_id == "extern-keyword"
+    assert issues[0].rule_id == "E001"
     assert "extern" in issues[0].message.lower()

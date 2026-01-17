@@ -1,75 +1,58 @@
-import sqlite3
 from pathlib import Path
 
 from capl_symbol_db.database import SymbolDatabase
 
-from ..models import InternalIssue
+from ..models import InternalIssue, Severity
 from .base import BaseRule
+from .db_helpers import RuleQueryHelper
 
 
-class VariablePlacementRule(BaseRule):
-    @property
-    def rule_id(self) -> str:
-        return "variable-placement"
+class VariableOutsideBlockRule(BaseRule):
+    """Variables must be declared inside variables{} block."""
+
+    rule_id = "E006"
+    name = "variable-outside-block"
+    severity = Severity.ERROR
+    auto_fixable = True
+    description = "Global variables must be declared inside 'variables {}' block."
 
     def check(self, file_path: Path, db: SymbolDatabase) -> list[InternalIssue]:
+        helper = RuleQueryHelper(db, file_path)
         issues = []
-        file_path_abs = str(file_path.resolve())
 
-        conn = sqlite3.connect(db.db_path)
-        try:
-            # 1. Check for variables outside variables block
-            cursor = conn.execute(
-                """
-                SELECT s.symbol_name, s.line_number
-                FROM symbols s
-                JOIN files f ON s.file_id = f.file_id
-                WHERE f.file_path = ? 
-                  AND s.symbol_type = 'variable'
-                  AND s.scope = 'global'
-            """,
-                (file_path_abs,),
+        for name, line in helper.get_global_variables():
+            issues.append(
+                self._create_issue(
+                    file_path=file_path,
+                    line=line,
+                    message=f"Variable '{name}' declared outside 'variables {{}}' block",
+                )
             )
 
-            for name, line in cursor.fetchall():
-                issues.append(
-                    InternalIssue(
-                        file_path=file_path,
-                        line=line,
-                        rule_id="variable-outside-block",
-                        message=f"Variable '{name}' declared outside 'variables {{}}' block",
-                        severity="error",
-                        auto_fixable=True,
-                    )
-                )
+        return issues
 
-            # 2. Check for mid-block declarations
-            cursor = conn.execute(
-                """
-                SELECT s.symbol_name, s.line_number, s.parent_symbol
-                FROM symbols s
-                JOIN files f ON s.file_id = f.file_id
-                WHERE f.file_path = ? 
-                  AND s.symbol_type = 'variable'
-                  AND s.scope = 'local'
-                  AND s.declaration_position = 'mid_block'
-            """,
-                (file_path_abs,),
+
+class MidBlockVariableRule(BaseRule):
+    """Local variables must be declared at function start."""
+
+    rule_id = "E007"
+    name = "variable-mid-block"
+    severity = Severity.ERROR
+    auto_fixable = True
+    description = "Local variables must be declared at the beginning of a function."
+
+    def check(self, file_path: Path, db: SymbolDatabase) -> list[InternalIssue]:
+        helper = RuleQueryHelper(db, file_path)
+        issues = []
+
+        for name, line, parent in helper.get_mid_block_variables():
+            issues.append(
+                self._create_issue(
+                    file_path=file_path,
+                    line=line,
+                    message=f"Variable '{name}' declared after executable statements in '{parent}'",
+                    context=parent,
+                )
             )
-
-            for name, line, parent in cursor.fetchall():
-                issues.append(
-                    InternalIssue(
-                        file_path=file_path,
-                        line=line,
-                        rule_id="variable-mid-block",
-                        message=f"Variable '{name}' declared after executable statements in '{parent}'",
-                        severity="error",
-                        auto_fixable=True,
-                        context=parent,
-                    )
-                )
-        finally:
-            conn.close()
 
         return issues
