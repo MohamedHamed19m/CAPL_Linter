@@ -90,3 +90,61 @@ class GlobalTypeDefinitionRule(BaseRule):
             )
 
         return issues
+
+class ArrowOperatorRule(BaseRule):
+    """Detect and fix arrow operator '->' usage (not supported in CAPL)."""
+
+    rule_id = "E008"
+    name = "arrow-operator"
+    severity = Severity.ERROR
+    auto_fixable = True
+    description = "Arrow operator '->' is not supported in CAPL. Use dot notation instead."
+
+    def check(self, file_path: Path, db: SymbolDatabase) -> list[InternalIssue]:
+        helper = RuleQueryHelper(db, file_path)
+        issues = []
+
+        # Query for arrow_operator context
+        results = helper.query_symbols(symbol_type="forbidden_syntax", context="arrow_operator")
+
+        for _, line, _, sig, _, _ in results:
+            issues.append(
+                self._create_issue(
+                    file_path=file_path,
+                    line=line,
+                    message="Arrow operator '->' is not supported in CAPL. Use dot notation instead.",
+                    context="arrow_operator",
+                )
+            )
+
+        return issues
+
+
+class PointerParameterRule(BaseRule):
+    """Detect forbidden struct pointer parameters."""
+
+    rule_id = "E009"
+    name = "pointer-parameter"
+    severity = Severity.ERROR
+    auto_fixable = False  # Keep as non-fixable for now
+    description = "Struct pointers are not supported in CAPL parameters."
+
+    def check(self, file_path: Path, db: SymbolDatabase) -> list[InternalIssue]:
+        helper = RuleQueryHelper(db, file_path)
+        issues = []
+
+        # Query for pointer_parameter context
+        results = helper.query_symbols(symbol_type="forbidden_syntax", context="pointer_parameter")
+
+        for _, line, _, sig, _, _ in results:
+            issues.append(
+                self._create_issue(
+                    file_path=file_path,
+                    line=line,
+                    message=f"Pointer parameter '{sig}' is forbidden. CAPL passes structs by reference implicitly.",
+                    context="pointer_parameter",
+                )
+            )
+
+        return issues
+

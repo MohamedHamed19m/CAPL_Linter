@@ -3,6 +3,8 @@ from .rules.syntax_rules import (
     ExternKeywordRule,
     FunctionDeclarationRule,
     GlobalTypeDefinitionRule,
+    ArrowOperatorRule,
+    PointerParameterRule,
 )
 from .rules.type_rules import (
     MissingEnumKeywordRule,
@@ -28,6 +30,8 @@ class RuleRegistry:
             ExternKeywordRule(),
             FunctionDeclarationRule(),
             GlobalTypeDefinitionRule(),
+            ArrowOperatorRule(),
+            PointerParameterRule(),
             # Type Rules (E004-E005)
             MissingEnumKeywordRule(),
             MissingStructKeywordRule(),

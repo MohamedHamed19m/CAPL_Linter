@@ -1,0 +1,46 @@
+
+variables {
+  struct Data {
+    int id;
+    dword name;
+  };
+}
+
+// this is correct (passing struct) because capl pass struct by refernce anyway 
+void MyFunc(struct Data data_obj) {
+
+}
+
+// this should raise an error for pointer usage
+void MyFunc2(struct Data* data_ptr) {
+}
+
+// this is wrong usage for arrow operator usage
+void MyFunc3(struct Data data_ptr) {
+  if (data_ptr != NULL) {
+    write("Data ID: %d", data_ptr->id);
+  }
+}
+
+// this is correct usage for dot operator usage
+void MyFunc4(struct Data data_obj) {
+  write("Data ID: %d", data_obj.id);
+}
+
+
+// this is correct usage for pointer refernce with variables
+void MyFunc5(byte &byte_ptr) {
+  byte_ptr = 10;
+}
+
+
+// this is correct usage for pointer refernce with ethernetpacket type
+void MyFunc5(ethernetpacket * packet) {
+  packet.udp.IsAvailable();
+}
+
+// this is correct usage for pointer refernce with someipMessage type
+void MyFunc5(someipMessage * msg) {
+  msg.ClientID = 100;
+}
+

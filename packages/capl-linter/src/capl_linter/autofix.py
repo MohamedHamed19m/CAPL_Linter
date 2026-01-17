@@ -17,6 +17,7 @@ class AutoFixEngine:
             "E002": self._fix_function_declaration,
             "E003": self._fix_global_type_definition,
             "E001": self._fix_extern_keyword,
+            "E008": self._fix_arrow_operator,
         }
 
     def can_fix(self, rule_id: str) -> bool:
@@ -201,6 +202,15 @@ class AutoFixEngine:
                         for _ in range(i - line_idx + 1):
                             lines.pop(line_idx)
                         break
+        return "\n".join(lines)
+
+    def _fix_arrow_operator(self, content: str, issues: list[InternalIssue]) -> str:
+        lines = content.split("\n")
+        for issue in sorted(issues, key=lambda x: x.line, reverse=True):
+            idx = issue.line - 1
+            if idx < len(lines):
+                # Replace '->' with '.'
+                lines[idx] = lines[idx].replace("->", ".")
         return "\n".join(lines)
 
     # Helpers

@@ -1,7 +1,6 @@
-import re
 from pathlib import Path
 
-from capl_tree_sitter import ASTWalker, CAPLPatterns, CAPLParser, CAPLQueryHelper
+from capl_tree_sitter import ASTWalker, CAPLParser, CAPLPatterns, CAPLQueryHelper
 from tree_sitter import Node
 
 from .models import SymbolInfo
@@ -33,6 +32,7 @@ class SymbolExtractor:
         symbols.extend(self._extract_all_local_variables(root, source))
         symbols.extend(self._extract_type_usages(root, source))
         symbols.extend(self._extract_forbidden_syntax(root, source))
+        symbols.extend(self._extract_pointer_violations(root, source))
 
         # Filter duplicates that might arise from query overlaps
         seen = set()
@@ -61,7 +61,9 @@ class SymbolExtractor:
                 self.current_file_types[name] = "enum"
 
                 scope = (
-                    "variables_block" if CAPLPatterns.is_inside_variables_block(m.node, source) else "global"
+                    "variables_block"
+                    if CAPLPatterns.is_inside_variables_block(m.node, source)
+                    else "global"
                 )
 
                 line = name_node.start_point[0] + 1
@@ -91,7 +93,9 @@ class SymbolExtractor:
                 self.current_file_types[name] = "struct"
 
                 scope = (
-                    "variables_block" if CAPLPatterns.is_inside_variables_block(m.node, source) else "global"
+                    "variables_block"
+                    if CAPLPatterns.is_inside_variables_block(m.node, source)
+                    else "global"
                 )
 
                 line = name_node.start_point[0] + 1
@@ -113,13 +117,17 @@ class SymbolExtractor:
             if CAPLPatterns.is_event_handler(func, source):
                 name = CAPLPatterns.get_function_name(func, source) or "unknown"
                 signature = ASTWalker.get_text(func, source).split("{")[0].strip()
-                
+
                 # Heuristic to identify event type
                 context = "event"
-                if "message" in signature: context = "message"
-                elif "timer" in signature: context = "timer"
-                elif "key" in signature: context = "key"
-                elif "start" in signature: context = "start"
+                if "message" in signature:
+                    context = "message"
+                elif "timer" in signature:
+                    context = "timer"
+                elif "key" in signature:
+                    context = "key"
+                elif "start" in signature:
+                    context = "start"
 
                 symbols.append(
                     SymbolInfo(
@@ -131,7 +139,7 @@ class SymbolExtractor:
                         context=context,
                     )
                 )
-        
+
         # Fallback for some regex cases if needed, but CAPLPatterns should handle most
         return symbols
 
@@ -157,7 +165,7 @@ class SymbolExtractor:
         return symbols
 
     def _extract_variables_block(self, root: Node, source: str) -> list[SymbolInfo]:
-        # Variables block itself is not usually stored as a symbol, 
+        # Variables block itself is not usually stored as a symbol,
         # but its contents are marked as scope='variables_block'
         return []
 
@@ -174,9 +182,11 @@ class SymbolExtractor:
             # Skip if inside a function
             if not CAPLPatterns.is_global_scope(node):
                 continue
-            
+
             scope = (
-                "variables_block" if CAPLPatterns.is_inside_variables_block(node, source) else "global"
+                "variables_block"
+                if CAPLPatterns.is_inside_variables_block(node, source)
+                else "global"
             )
 
             # Get the name(s)
@@ -270,7 +280,7 @@ class SymbolExtractor:
 
     def _extract_forbidden_syntax(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
-        
+
         # 1. Detection for 'extern' keyword using AST
         for decl in ASTWalker.find_all_by_type(root, "declaration"):
             if CAPLPatterns.has_extern_keyword(decl, source):
@@ -302,3 +312,40 @@ class SymbolExtractor:
 
         return symbols
 
+    def _extract_pointer_violations(self, root: Node, source: str) -> list[SymbolInfo]:
+        """Extract all pointer-related violations."""
+        symbols = []
+
+        funcs = ASTWalker.find_all_by_type(root, "function_definition")
+
+        for func in funcs:
+            func_name = CAPLPatterns.get_function_name(func, source) or "unknown"
+            analysis = CAPLPatterns.analyze_pointer_usage(func, source)
+
+            # Add forbidden pointer parameters
+            for v in analysis["forbidden_pointers"]:
+                symbols.append(
+                    SymbolInfo(
+                        name=v["param_text"],
+                        symbol_type="forbidden_syntax",
+                        line_number=v["line"],
+                        signature=v["param_text"],
+                        scope="forbidden",
+                        context="pointer_parameter",
+                    )
+                )
+
+            # Add arrow operator usages
+            for v in analysis["arrow_operators"]:
+                symbols.append(
+                    SymbolInfo(
+                        name="->",
+                        symbol_type="forbidden_syntax",
+                        line_number=v["line"],
+                        signature=v["expression"],
+                        scope="forbidden",
+                        context="arrow_operator",
+                    )
+                )
+
+        return symbols

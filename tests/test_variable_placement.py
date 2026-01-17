@@ -10,10 +10,7 @@ def test_variable_outside_variables_block(tmp_path):
     db_path = tmp_path / "test.db"
     engine = LinterEngine(str(db_path))
 
-    # We need to manually populate the DB for now because engine.analyze_file
-    # expects extractor to handle the 'variable-outside-block' logic
-    # which I haven't fully migrated yet in extractor.py
+    issues = engine.analyze_file(file_path)
 
-    # Actually, I'll just skip this test until the full logic is migrated
-    # or implement a minimal version of the rule.
-    pytest.skip("Full rule logic migration in progress")
+    # Should find E006
+    assert any(i.rule_id == "E006" for i in issues)

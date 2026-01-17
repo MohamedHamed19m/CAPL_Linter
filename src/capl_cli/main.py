@@ -36,24 +36,21 @@ def lint(
     for file_path in files:
         max_passes = 10
         passes = 0
+        current_issues = []
 
         while passes < max_passes:
             passes += 1
-            issues = engine.analyze_file(file_path, force=(passes > 1))
-            all_issues.extend(
-                issues
-            ) if passes == 1 else None  # Only collect once for final report if needed, or handle differently
+            current_issues = engine.analyze_file(file_path, force=(passes > 1))
 
             if not fix:
                 break
 
-            fixable = [i for i in issues if i.auto_fixable]
+            fixable = [i for i in current_issues if i.auto_fixable]
             if not fixable:
                 break
 
             autofix = AutoFixEngine()
 
-            # Pick one rule type to fix at a time
             # Priority list for fixes
             priority = [
                 "E004",  # missing-enum-keyword
@@ -62,6 +59,7 @@ def lint(
                 "E003",  # global-type-definition
                 "E006",  # variable-outside-block
                 "E007",  # variable-mid-block
+                "E008",  # arrow-operator
             ]
 
             target_rule = None
@@ -79,15 +77,10 @@ def lint(
             new_content = autofix.apply_fixes(file_path, rule_issues)
             file_path.write_text(new_content, encoding="utf-8")
 
-            # Re-collect all issues for the global accumulator after final pass?
-            # For simplicity, we just break here if we were not fixing.
-            # But we ARE fixing, so we loop.
             if passes == max_passes:
                 typer.echo(f"Warning: Reached max fix passes for {file_path}")
 
-        # Re-analyze one last time to get final issues
-        final_issues = engine.analyze_file(file_path, force=True)
-        all_issues.extend(final_issues)
+        all_issues.extend(current_issues)
 
     # Convert to external models and print (simplified report for now)
     external_issues = [internal_issue_to_lint_issue(i) for i in all_issues]

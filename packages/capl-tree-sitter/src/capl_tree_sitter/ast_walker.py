@@ -60,7 +60,9 @@ class ASTWalker:
         """Find all sibling nodes of a specific type."""
         if not node.parent:
             return []
-        return [child for child in node.parent.children if child != node and child.type == type_name]
+        return [
+            child for child in node.parent.children if child != node and child.type == type_name
+        ]
 
     @staticmethod
     def is_inside_type(node: Node, type_name: str) -> bool:
