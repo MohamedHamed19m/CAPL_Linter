@@ -1,9 +1,7 @@
 import re
 from pathlib import Path
 
-from capl_tree_sitter.ast_walker import ASTWalker
-from capl_tree_sitter.parser import CAPLParser
-from capl_tree_sitter.queries import CAPLQueryHelper
+from capl_tree_sitter import ASTWalker, CAPLPatterns, CAPLParser, CAPLQueryHelper
 from tree_sitter import Node
 
 from .models import SymbolInfo
@@ -59,11 +57,11 @@ class SymbolExtractor:
         for m in matches:
             if "enum_name" in m.captures:
                 name_node = m.captures["enum_name"]
-                name = source[name_node.start_byte : name_node.end_byte]
+                name = ASTWalker.get_text(name_node, source)
                 self.current_file_types[name] = "enum"
 
                 scope = (
-                    "variables_block" if self._is_in_variables_block(m.node, source) else "global"
+                    "variables_block" if CAPLPatterns.is_inside_variables_block(m.node, source) else "global"
                 )
 
                 line = name_node.start_point[0] + 1
@@ -89,11 +87,11 @@ class SymbolExtractor:
         for m in matches:
             if "struct_name" in m.captures:
                 name_node = m.captures["struct_name"]
-                name = source[name_node.start_byte : name_node.end_byte]
+                name = ASTWalker.get_text(name_node, source)
                 self.current_file_types[name] = "struct"
 
                 scope = (
-                    "variables_block" if self._is_in_variables_block(m.node, source) else "global"
+                    "variables_block" if CAPLPatterns.is_inside_variables_block(m.node, source) else "global"
                 )
 
                 line = name_node.start_point[0] + 1
@@ -108,49 +106,33 @@ class SymbolExtractor:
                 )
         return symbols
 
-    def _is_in_variables_block(self, node: Node, source: str) -> bool:
-        """Check if a node is inside a variables {} block"""
-        curr = node
-        while curr:
-            if curr.type == "compound_statement":
-                p = curr.parent
-                if p:
-                    # Look at this block and its immediate context
-                    for i, child in enumerate(p.children):
-                        if child == curr:
-                            # Check text before this block
-                            start = p.children[i - 1].start_byte if i > 0 else p.start_byte
-                            context_text = source[start : curr.start_byte]
-                            if "variables" in context_text:
-                                return True
-                            break
-            curr = curr.parent
-        return False
-
     def _extract_event_handlers(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
-        # Simplified query for common CAPL event handlers
-        # In tree-sitter-c, these often appear as a labeled statement or similar
-        # but CAPL uses keywords 'on message', 'on timer', etc.
-        # Here we just look for identifiers following 'on' if we had a proper grammar.
-        # Using the original logic based on C grammar:
-        lines = source.split("\n")
-        for i, line in enumerate(lines):
-            match = re.search(
-                r"^\s*on\s+(message|timer|key|signal|start|stop|preStart|preStop|errorFrame|busOff)\s+([^\s{]+)",
-                line,
-            )
-            if match:
+        # Use CAPLPatterns to find event handlers
+        for func in ASTWalker.find_all_by_type(root, "function_definition"):
+            if CAPLPatterns.is_event_handler(func, source):
+                name = CAPLPatterns.get_function_name(func, source) or "unknown"
+                signature = ASTWalker.get_text(func, source).split("{")[0].strip()
+                
+                # Heuristic to identify event type
+                context = "event"
+                if "message" in signature: context = "message"
+                elif "timer" in signature: context = "timer"
+                elif "key" in signature: context = "key"
+                elif "start" in signature: context = "start"
+
                 symbols.append(
                     SymbolInfo(
-                        name=match.group(2),
+                        name=name,
                         symbol_type="event_handler",
-                        line_number=i + 1,
-                        signature=line.strip(),
+                        line_number=func.start_point[0] + 1,
+                        signature=signature,
                         scope="global",
-                        context=match.group(1),
+                        context=context,
                     )
                 )
+        
+        # Fallback for some regex cases if needed, but CAPLPatterns should handle most
         return symbols
 
     def _extract_functions(self, root: Node, source: str) -> list[SymbolInfo]:
@@ -159,58 +141,52 @@ class SymbolExtractor:
         matches = self.query_helper.query(query, root)
         for m in matches:
             func_node = m.node
-            # Find the identifier in the declarator
-            # This is simplified; real logic is more complex
+            if CAPLPatterns.is_event_handler(func_node, source):
+                continue
+
+            name = CAPLPatterns.get_function_name(func_node, source) or "unknown_func"
             symbols.append(
                 SymbolInfo(
-                    name="unknown_func",  # Simplification for now
+                    name=name,
                     symbol_type="function",
                     line_number=func_node.start_point[0] + 1,
-                    signature=source[func_node.start_byte : func_node.end_byte]
-                    .split("{")[0]
-                    .strip(),
+                    signature=ASTWalker.get_text(func_node, source).split("{")[0].strip(),
                     scope="global",
                 )
             )
         return symbols
 
     def _extract_variables_block(self, root: Node, source: str) -> list[SymbolInfo]:
-        symbols = []
-        # Find 'variables {' blocks
-        # This is hard because tree-sitter-c doesn't know 'variables'
-        # We search for it in source and find the matching block if possible,
-        # or use a query that matches what tree-sitter-c thinks it is (often a labeled statement or function)
+        # Variables block itself is not usually stored as a symbol, 
+        # but its contents are marked as scope='variables_block'
         return []
 
     def _extract_global_variables(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
-        # Global variables are declarations at the root level (translation_unit)
-        # that are NOT inside a 'variables' block and NOT inside a function.
         query = "(declaration) @decl"
         matches = self.query_helper.query(query, root)
         for m in matches:
             node = m.node
 
-            # Skip if inside a function or a variables block
-            if self._is_in_variables_block(node, source):
-                scope = "variables_block"
-            elif ASTWalker.find_parent_of_type(node, "function_definition"):
-                continue  # Handled by local variable extraction
-            else:
-                # Root level but not in variables block
-                scope = "global"
+            if CAPLPatterns.is_function_declaration(node):
+                continue
+
+            # Skip if inside a function
+            if not CAPLPatterns.is_global_scope(node):
+                continue
+            
+            scope = (
+                "variables_block" if CAPLPatterns.is_inside_variables_block(node, source) else "global"
+            )
 
             # Get the name(s)
-            name_query = "(init_declarator declarator: (identifier) @name)"
-            name_matches = self.query_helper.query(name_query, node)
-            for nm in name_matches:
-                name_node = nm.captures["name"]
-                name = source[name_node.start_byte : name_node.end_byte]
+            name = CAPLPatterns.get_variable_name(node, source)
+            if name:
                 symbols.append(
                     SymbolInfo(
                         name=name,
                         symbol_type="variable",
-                        line_number=name_node.start_point[0] + 1,
+                        line_number=node.start_point[0] + 1,
                         scope=scope,
                     )
                 )
@@ -218,35 +194,23 @@ class SymbolExtractor:
 
     def _extract_all_local_variables(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
-        # Local variables are declarations inside functions or event handlers
         query = "(function_definition) @func"
         matches = self.query_helper.query(query, root)
         for m in matches:
             func_node = m.node
-            # Extract function name
-            func_name = "unknown"
-            decl_node = func_node.child_by_field_name("declarator")
-            if decl_node:
-                # Find identifier in declarator
-                id_query = "(identifier) @name"
-                id_matches = self.query_helper.query(id_query, decl_node)
-                if id_matches:
-                    name_node = id_matches[0].captures["name"]
-                    func_name = source[name_node.start_byte : name_node.end_byte]
+            func_name = CAPLPatterns.get_function_name(func_node, source) or "unknown"
 
             # Find all statements inside this function body
-            body_node = func_node.child_by_field_name("body")
+            body_node = ASTWalker.get_child_of_type(func_node, "compound_statement")
             if not body_node:
                 continue
 
             first_non_decl_line = None
-            # Iterate through children of compound_statement
             for child in body_node.children:
                 if child.type in ("{", "}"):
                     continue
 
                 if child.type == "declaration":
-                    # It's a declaration. Check if it's after a non-decl
                     pos = "block_start"
                     if (
                         first_non_decl_line is not None
@@ -254,17 +218,13 @@ class SymbolExtractor:
                     ):
                         pos = "mid_block"
 
-                    # Extract names from this declaration
-                    name_query = "(init_declarator declarator: (identifier) @name)"
-                    name_matches = self.query_helper.query(name_query, child)
-                    for nm in name_matches:
-                        name_node = nm.captures["name"]
-                        name = source[name_node.start_byte : name_node.end_byte]
+                    name = CAPLPatterns.get_variable_name(child, source)
+                    if name:
                         symbols.append(
                             SymbolInfo(
                                 name=name,
                                 symbol_type="variable",
-                                line_number=name_node.start_point[0] + 1,
+                                line_number=child.start_point[0] + 1,
                                 scope="local",
                                 parent_symbol=func_name,
                                 declaration_position=pos,
@@ -286,33 +246,23 @@ class SymbolExtractor:
             if "type_name" not in m.captures:
                 continue
             type_node = m.captures["type_name"]
-            type_name = source[type_node.start_byte : type_node.end_byte]
+            type_name = ASTWalker.get_text(type_node, source)
 
             # Check if this type name is a known enum or struct
             kind = self.current_file_types.get(type_name)
             if kind:
                 # Double check by looking at the source text before the type name
-                start_of_decl = m.node.start_byte
-                text_before = source[start_of_decl : type_node.start_byte]
+                text_before = ASTWalker.get_text(m.node, source).split(type_name)[0]
                 if kind not in text_before:
                     # Missing keyword!
-                    # Find the variable name
-                    name_query = "(identifier) @name"
-                    name_matches = self.query_helper.query(name_query, m.node)
-                    # The first identifier after the type name is likely the variable name
-                    var_name = "unknown"
-                    for nm in name_matches:
-                        node = nm.captures["name"]
-                        if node.start_byte > type_node.end_byte:
-                            var_name = source[node.start_byte : node.end_byte]
-                            break
+                    var_name = CAPLPatterns.get_variable_name(m.node, source) or "unknown"
 
                     symbols.append(
                         SymbolInfo(
                             name=var_name,
                             symbol_type="type_usage_error",
                             line_number=type_node.start_point[0] + 1,
-                            signature=source[m.node.start_byte : m.node.end_byte].strip(),
+                            signature=ASTWalker.get_text(m.node, source).strip(),
                             context=f"missing_{kind}_keyword",
                         )
                     )
@@ -320,41 +270,35 @@ class SymbolExtractor:
 
     def _extract_forbidden_syntax(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
-        # 1. Detection for 'extern' keyword
-        lines = source.split("\n")
-        for i, line in enumerate(lines):
-            if "extern" in line.split("//")[0]:
+        
+        # 1. Detection for 'extern' keyword using AST
+        for decl in ASTWalker.find_all_by_type(root, "declaration"):
+            if CAPLPatterns.has_extern_keyword(decl, source):
                 symbols.append(
                     SymbolInfo(
                         name="extern",
                         symbol_type="forbidden_syntax",
-                        line_number=i + 1,
-                        signature=line.strip(),
+                        line_number=decl.start_point[0] + 1,
+                        signature=ASTWalker.get_text(decl, source).strip(),
                         scope="forbidden",
                         context="extern_keyword",
                     )
                 )
 
-        # 2. Detection for function declarations (forward declarations)
-        query = """
-            (declaration
-              declarator: (function_declarator
-                declarator: (identifier) @func_name)) @func_decl
-        """
-        matches = self.query_helper.query(query, root)
-        for m in matches:
-            if "func_name" in m.captures:
-                name_node = m.captures["func_name"]
-                name = source[name_node.start_byte : name_node.end_byte]
+        # 2. Detection for function declarations (forward declarations) using CAPLPatterns
+        for decl in ASTWalker.find_all_by_type(root, "declaration"):
+            if CAPLPatterns.is_function_declaration(decl):
+                name = CAPLPatterns.get_function_name(decl, source) or "unknown"
                 symbols.append(
                     SymbolInfo(
                         name=name,
                         symbol_type="forbidden_syntax",
-                        line_number=name_node.start_point[0] + 1,
-                        signature=source[m.node.start_byte : m.node.end_byte].strip(),
+                        line_number=decl.start_point[0] + 1,
+                        signature=ASTWalker.get_text(decl, source).strip(),
                         scope="forbidden",
                         context="function_declaration",
                     )
                 )
 
         return symbols
+

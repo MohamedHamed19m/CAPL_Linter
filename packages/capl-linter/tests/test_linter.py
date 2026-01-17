@@ -22,6 +22,9 @@ def test_linter_forbidden_syntax(tmp_path):
     # 2. Lint
     issues = engine.analyze_file(file_path)
 
-    assert len(issues) == 1
-    assert issues[0].rule_id == "E001"
-    assert "extern" in issues[0].message.lower()
+    # It should find two issues:
+    # 1. Extern keyword (E001)
+    # 2. Variable outside block (E006)
+    assert len(issues) == 2
+    assert any(i.rule_id == "E001" for i in issues)
+    assert any(i.rule_id == "E006" for i in issues)
