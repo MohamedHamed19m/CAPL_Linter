@@ -39,7 +39,11 @@ The codebase is split into independent library packages and a root CLI package:
 
 ### Adding a New Lint Rule
 1.  Create a new rule class in `packages/capl-linter/src/capl_linter/rules/`.
-2.  Inherit from `BaseRule` and implement `rule_id` and `check(file_path, db)`.
+2.  Inherit from `BaseRule` and implement:
+    *   `rule_id`: Standardized code (e.g., `E001` for Errors, `W101` for Warnings, `S201` for Style).
+    *   `name`: Human-readable slug (e.g., `extern-keyword`).
+    *   `severity`: Use `Severity` enum (`ERROR`, `WARNING`, `STYLE`).
+    *   `check(file_path, db)`: Use `RuleQueryHelper` for optimized database access instead of raw SQL.
 3.  Register the rule in `packages/capl-linter/src/capl_linter/registry.py`.
 
 ### Adding New Auto-Fix Logic
