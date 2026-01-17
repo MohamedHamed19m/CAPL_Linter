@@ -30,6 +30,7 @@ class SymbolExtractor:
         symbols.extend(self._extract_variables_block(root, source))
         symbols.extend(self._extract_global_variables(root, source))
         symbols.extend(self._extract_all_local_variables(root, source))
+        symbols.extend(self._extract_type_usages(root, source))
 
         # Filter duplicates that might arise from query overlaps
         seen = set()
@@ -73,6 +74,24 @@ class SymbolExtractor:
                         context="enum_definition",
                     )
                 )
+
+                # Extract individual enum members
+                if "members" in m.captures:
+                    members_node = m.captures["members"]
+                    for member in ASTWalker.find_all_by_type(members_node, "enumerator"):
+                        member_name_node = ASTWalker.get_child_of_type(member, "identifier")
+                        if member_name_node:
+                            m_name = ASTWalker.get_text(member_name_node, source)
+                            symbols.append(
+                                SymbolInfo(
+                                    name=m_name,
+                                    symbol_type="constant",
+                                    line_number=member_name_node.start_point[0] + 1,
+                                    scope=scope,
+                                    context="enum_member",
+                                    parent_symbol=name,
+                                )
+                            )
         return symbols
 
     def _extract_struct_definitions(self, root: Node, source: str) -> list[SymbolInfo]:
@@ -144,9 +163,11 @@ class SymbolExtractor:
 
     def _extract_functions(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
-        query = "(function_definition) @func"
-        matches = self.query_helper.query(query, root)
-        for m in matches:
+        
+        # 1. Extract definitions
+        query_def = "(function_definition) @func"
+        matches_def = self.query_helper.query(query_def, root)
+        for m in matches_def:
             func_node = m.node
             if CAPLPatterns.is_event_handler(func_node, source):
                 continue
@@ -160,9 +181,29 @@ class SymbolExtractor:
                     signature=ASTWalker.get_text(func_node, source).split("{")[0].strip(),
                     scope="global",
                     param_count=self._count_parameters(func_node, source),
-                    has_body=self._has_function_body(func_node),
+                    has_body=True,
                 )
             )
+            
+        # 2. Extract prototypes (forward declarations)
+        query_decl = "(declaration) @decl"
+        matches_decl = self.query_helper.query(query_decl, root)
+        for m in matches_decl:
+            decl_node = m.node
+            if CAPLPatterns.is_function_declaration(decl_node):
+                name = CAPLPatterns.get_function_name(decl_node, source) or "unknown_func"
+                symbols.append(
+                    SymbolInfo(
+                        name=name,
+                        symbol_type="function",
+                        line_number=decl_node.start_point[0] + 1,
+                        signature=ASTWalker.get_text(decl_node, source).strip(),
+                        scope="global",
+                        param_count=self._count_parameters(decl_node, source),
+                        has_body=False,
+                    )
+                )
+                
         return symbols
 
     def _extract_variables_block(self, root: Node, source: str) -> list[SymbolInfo]:
@@ -287,3 +328,36 @@ class SymbolExtractor:
         """Check if function has a body (compound_statement)"""
         body = ASTWalker.get_child_of_type(func_node, "compound_statement")
         return body is not None
+
+    def _extract_type_usages(self, root: Node, source: str) -> list[SymbolInfo]:
+        symbols = []
+        # Look for declarations where the type is a known enum/struct
+        # but the keyword (enum/struct) is missing.
+        query = "(declaration (type_identifier) @type_name) @decl"
+        matches = self.query_helper.query(query, root)
+        for m in matches:
+            if "type_name" not in m.captures:
+                continue
+            type_node = m.captures["type_name"]
+            type_name = ASTWalker.get_text(type_node, source)
+
+            # Check if this type name is a known enum or struct
+            kind = self.current_file_types.get(type_name)
+            if kind:
+                # Double check by looking at the source text before the type name
+                decl_text = ASTWalker.get_text(m.node, source)
+                text_before = decl_text.split(type_name)[0]
+                if kind not in text_before:
+                    # Missing keyword!
+                    var_name = CAPLPatterns.get_variable_name(m.node, source) or "unknown"
+
+                    symbols.append(
+                        SymbolInfo(
+                            name=var_name,
+                            symbol_type="type_usage_error",
+                            line_number=type_node.start_point[0] + 1,
+                            signature=decl_text.strip(),
+                            context=f"missing_{kind}_keyword",
+                        )
+                    )
+        return symbols

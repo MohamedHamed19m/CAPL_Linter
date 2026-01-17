@@ -24,6 +24,7 @@ CAPL_BUILTINS = {
     "key",
     "errorFrame",
     "sysVar",
+    "variables",
     # Types
     "int",
     "long",

@@ -135,6 +135,66 @@ class GlobalTypeDefinitionRule(BaseRule):
 
         return issues
 
+    def fix(self, file_path: Path, issues: list[InternalIssue]) -> str:
+        lines = file_path.read_text(encoding="utf-8").split("\n")
+        # Use helper from VariableOutsideBlockRule for now
+        from .variable_rules import VariableOutsideBlockRule
+
+        v_rule = VariableOutsideBlockRule()
+        var_block_start, var_block_end = v_rule._find_variables_block_range(lines)
+
+        if var_block_start is None:
+            # Create variables block after includes
+            insert_pos = 0
+            for i, line in enumerate(lines):
+                if not line.strip().startswith("#include"):
+                    insert_pos = i
+                    break
+            lines.insert(insert_pos, "variables {")
+            lines.insert(insert_pos + 1, "}")
+            var_block_start = insert_pos
+            var_block_end = insert_pos + 1
+
+        # Process each issue bottom-up
+        for issue in sorted(issues, key=lambda x: x.line, reverse=True):
+            start_line_idx = issue.line - 1
+            if start_line_idx >= len(lines):
+                continue
+
+            # Find the end of the definition
+            end_line_idx = None
+            brace_count = 0
+            found_open = False
+            for i in range(start_line_idx, len(lines)):
+                line = lines[i]
+                if "{" in line:
+                    brace_count += line.count("{")
+                    found_open = True
+                if "}" in line:
+                    brace_count -= line.count("}")
+
+                if found_open and brace_count == 0:
+                    end_line_idx = i
+                    break
+
+            if end_line_idx is not None:
+                # Extract the whole block
+                def_lines = lines[start_line_idx : end_line_idx + 1]
+                # Remove from lines
+                for _ in range(len(def_lines)):
+                    lines.pop(start_line_idx)
+
+                # Adjust var_block_end
+                if start_line_idx < var_block_end:
+                    var_block_end -= len(def_lines)
+
+                # Insert into variables block
+                for i, def_line in enumerate(def_lines):
+                    lines.insert(var_block_end, "  " + def_line.strip())
+                    var_block_end += 1
+
+        return "\n".join(lines)
+
 
 class ArrowOperatorRule(BaseRule):
     """Detect and fix arrow operator '->' usage (not supported in CAPL)."""

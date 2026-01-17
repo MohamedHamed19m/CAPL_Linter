@@ -35,39 +35,47 @@ class DependencyAnalyzer:
         """
         matches = self.query_helper.query(query, root)
 
+        # Pre-resolve and pre-store files to avoid locking issues
+        include_data = []
+        for m in matches:
+            if "path" in m.captures:
+                path_node = m.captures["path"]
+                include_text = source[path_node.start_byte : path_node.end_byte]
+                include_path = include_text.strip('"<>')
+                resolved_path = self._resolve_path(include_path, file_path)
+                
+                included_file_id = None
+                if resolved_path:
+                    with open(resolved_path, "rb") as f:
+                        included_file_id = self.db.store_file(resolved_path, f.read())
+                
+                include_data.append({
+                    "path_node": path_node,
+                    "include_path": include_path,
+                    "included_file_id": included_file_id,
+                    "is_resolved": resolved_path is not None
+                })
+
         conn = sqlite3.connect(self.db.db_path)
         try:
             with conn:
                 conn.execute("DELETE FROM includes WHERE source_file_id = ?", (file_id,))
 
-                for m in matches:
-                    if "path" in m.captures:
-                        path_node = m.captures["path"]
-                        include_text = source[path_node.start_byte : path_node.end_byte]
-                        include_path = include_text.strip('"<>')
-
-                        resolved_path = self._resolve_path(include_path, file_path)
-
-                        included_file_id = None
-                        if resolved_path:
-                            # Register included file in DB too
-                            with open(resolved_path, "rb") as f:
-                                included_file_id = self.db.store_file(resolved_path, f.read())
-
-                        conn.execute(
-                            """
-                            INSERT INTO includes (source_file_id, included_file_id, include_path, 
-                                               line_number, is_resolved)
-                            VALUES (?, ?, ?, ?, ?)
-                        """,
-                            (
-                                file_id,
-                                included_file_id,
-                                include_path,
-                                path_node.start_point[0] + 1,
-                                resolved_path is not None,
-                            ),
-                        )
+                for data in include_data:
+                    conn.execute(
+                        """
+                        INSERT INTO includes (source_file_id, included_file_id, include_path, 
+                                           line_number, is_resolved)
+                        VALUES (?, ?, ?, ?, ?)
+                    """,
+                        (
+                            file_id,
+                            data["included_file_id"],
+                            data["include_path"],
+                            data["path_node"].start_point[0] + 1,
+                            data["is_resolved"],
+                        ),
+                    )
         finally:
             conn.close()
 
