@@ -16,8 +16,7 @@ The CAPL Analyzer uses a **Balanced Technical** prose style that combines:
 
 **Example Error Message:**
 ```
-❌ ERROR (Line 25): variable-outside-block
-   Variable 'badVar' declared outside 'variables {}' block
+❌ ERROR: MyNode.can:25 [E006] - Variable 'badVar' declared outside 'variables {}' block
    💡 Move 'badVar' declaration into the variables {} block
    🔧 Auto-fixable
 ```
@@ -43,8 +42,8 @@ The CAPL Analyzer uses a **Balanced Technical** prose style that combines:
 
 ### ERROR Messages
 - **Style**: Direct, technical, authoritative
-- **Format**: `[rule-id] <precise description>`
-- **Must Include**: Line number, rule violation, CAPL specification reference
+- **Format**: `[E00X] <precise description>` (e.g., E001, E006)
+- **Must Include**: Line number, rule violation code, CAPL specification reference
 
 ### WARNING Messages  
 - **Style**: Advisory, best-practice oriented
