@@ -2,19 +2,20 @@ from pathlib import Path
 from capl_linter.engine import LinterEngine
 from capl_symbol_db.database import SymbolDatabase
 
+
 def test_linter_pointer_syntax():
     db_path = "test_pointer.db"
     if Path(db_path).exists():
         Path(db_path).unlink()
-        
+
     engine = LinterEngine(db_path=db_path)
-    
+
     # Path to the example file
     file_path = Path("examples/Pointers_errors.can")
-    
+
     # Analyze the file
     issues = engine.analyze_file(file_path, force=True)
-    
+
     # Filter issues by the new rules E008 and E009
     arrow_issues = [i for i in issues if i.rule_id == "E008"]
     param_issues = [i for i in issues if i.rule_id == "E009"]

@@ -30,9 +30,6 @@ class SymbolExtractor:
         symbols.extend(self._extract_variables_block(root, source))
         symbols.extend(self._extract_global_variables(root, source))
         symbols.extend(self._extract_all_local_variables(root, source))
-        symbols.extend(self._extract_type_usages(root, source))
-        symbols.extend(self._extract_forbidden_syntax(root, source))
-        symbols.extend(self._extract_pointer_violations(root, source))
 
         # Filter duplicates that might arise from query overlaps
         seen = set()
@@ -137,6 +134,8 @@ class SymbolExtractor:
                         signature=signature,
                         scope="global",
                         context=context,
+                        param_count=self._count_parameters(func, source),
+                        has_body=self._has_function_body(func),
                     )
                 )
 
@@ -160,6 +159,8 @@ class SymbolExtractor:
                     line_number=func_node.start_point[0] + 1,
                     signature=ASTWalker.get_text(func_node, source).split("{")[0].strip(),
                     scope="global",
+                    param_count=self._count_parameters(func_node, source),
+                    has_body=self._has_function_body(func_node),
                 )
             )
         return symbols
@@ -210,7 +211,27 @@ class SymbolExtractor:
             func_node = m.node
             func_name = CAPLPatterns.get_function_name(func_node, source) or "unknown"
 
-            # Find all statements inside this function body
+            # 1. Extract parameters as local variables
+            declarator = ASTWalker.get_child_of_type(func_node, "function_declarator")
+            if declarator:
+                param_list = ASTWalker.get_child_of_type(declarator, "parameter_list")
+                if param_list:
+                    for param in ASTWalker.get_named_children(param_list):
+                        if param.type == "parameter_declaration":
+                            name = CAPLPatterns.get_variable_name(param, source)
+                            if name:
+                                symbols.append(
+                                    SymbolInfo(
+                                        name=name,
+                                        symbol_type="variable",
+                                        line_number=param.start_point[0] + 1,
+                                        scope="local",
+                                        parent_symbol=func_name,
+                                        declaration_position="parameter",
+                                    )
+                                )
+
+            # 2. Find all statements inside this function body
             body_node = ASTWalker.get_child_of_type(func_node, "compound_statement")
             if not body_node:
                 continue
@@ -246,106 +267,23 @@ class SymbolExtractor:
                         first_non_decl_line = child.start_point[0]
         return symbols
 
-    def _extract_type_usages(self, root: Node, source: str) -> list[SymbolInfo]:
-        symbols = []
-        # Look for declarations where the type is a known enum/struct
-        # but the keyword (enum/struct) is missing.
-        query = "(declaration (type_identifier) @type_name) @decl"
-        matches = self.query_helper.query(query, root)
-        for m in matches:
-            if "type_name" not in m.captures:
-                continue
-            type_node = m.captures["type_name"]
-            type_name = ASTWalker.get_text(type_node, source)
+    def _count_parameters(self, func_node: Node, source: str) -> int:
+        """Count parameters in function signature"""
+        declarator = ASTWalker.get_child_of_type(func_node, "function_declarator")
+        if not declarator:
+            return 0
 
-            # Check if this type name is a known enum or struct
-            kind = self.current_file_types.get(type_name)
-            if kind:
-                # Double check by looking at the source text before the type name
-                text_before = ASTWalker.get_text(m.node, source).split(type_name)[0]
-                if kind not in text_before:
-                    # Missing keyword!
-                    var_name = CAPLPatterns.get_variable_name(m.node, source) or "unknown"
+        param_list = ASTWalker.get_child_of_type(declarator, "parameter_list")
+        if not param_list:
+            return 0
 
-                    symbols.append(
-                        SymbolInfo(
-                            name=var_name,
-                            symbol_type="type_usage_error",
-                            line_number=type_node.start_point[0] + 1,
-                            signature=ASTWalker.get_text(m.node, source).strip(),
-                            context=f"missing_{kind}_keyword",
-                        )
-                    )
-        return symbols
+        text = ASTWalker.get_text(param_list, source).strip()
+        if text in ("()", "(void)"):
+            return 0
 
-    def _extract_forbidden_syntax(self, root: Node, source: str) -> list[SymbolInfo]:
-        symbols = []
+        return text.count(",") + 1
 
-        # 1. Detection for 'extern' keyword using AST
-        for decl in ASTWalker.find_all_by_type(root, "declaration"):
-            if CAPLPatterns.has_extern_keyword(decl, source):
-                symbols.append(
-                    SymbolInfo(
-                        name="extern",
-                        symbol_type="forbidden_syntax",
-                        line_number=decl.start_point[0] + 1,
-                        signature=ASTWalker.get_text(decl, source).strip(),
-                        scope="forbidden",
-                        context="extern_keyword",
-                    )
-                )
-
-        # 2. Detection for function declarations (forward declarations) using CAPLPatterns
-        for decl in ASTWalker.find_all_by_type(root, "declaration"):
-            if CAPLPatterns.is_function_declaration(decl):
-                name = CAPLPatterns.get_function_name(decl, source) or "unknown"
-                symbols.append(
-                    SymbolInfo(
-                        name=name,
-                        symbol_type="forbidden_syntax",
-                        line_number=decl.start_point[0] + 1,
-                        signature=ASTWalker.get_text(decl, source).strip(),
-                        scope="forbidden",
-                        context="function_declaration",
-                    )
-                )
-
-        return symbols
-
-    def _extract_pointer_violations(self, root: Node, source: str) -> list[SymbolInfo]:
-        """Extract all pointer-related violations."""
-        symbols = []
-
-        funcs = ASTWalker.find_all_by_type(root, "function_definition")
-
-        for func in funcs:
-            func_name = CAPLPatterns.get_function_name(func, source) or "unknown"
-            analysis = CAPLPatterns.analyze_pointer_usage(func, source)
-
-            # Add forbidden pointer parameters
-            for v in analysis["forbidden_pointers"]:
-                symbols.append(
-                    SymbolInfo(
-                        name=v["param_text"],
-                        symbol_type="forbidden_syntax",
-                        line_number=v["line"],
-                        signature=v["param_text"],
-                        scope="forbidden",
-                        context="pointer_parameter",
-                    )
-                )
-
-            # Add arrow operator usages
-            for v in analysis["arrow_operators"]:
-                symbols.append(
-                    SymbolInfo(
-                        name="->",
-                        symbol_type="forbidden_syntax",
-                        line_number=v["line"],
-                        signature=v["expression"],
-                        scope="forbidden",
-                        context="arrow_operator",
-                    )
-                )
-
-        return symbols
+    def _has_function_body(self, func_node: Node) -> bool:
+        """Check if function has a body (compound_statement)"""
+        body = ASTWalker.get_child_of_type(func_node, "compound_statement")
+        return body is not None

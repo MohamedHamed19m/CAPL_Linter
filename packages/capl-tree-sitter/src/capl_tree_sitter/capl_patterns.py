@@ -100,9 +100,9 @@ class CAPLPatterns:
             return False
 
         # Check type_specifier OR type_identifier
-        type_node = ASTWalker.get_child_of_type(node, "type_specifier") or ASTWalker.get_child_of_type(
-            node, "type_identifier"
-        )
+        type_node = ASTWalker.get_child_of_type(
+            node, "type_specifier"
+        ) or ASTWalker.get_child_of_type(node, "type_identifier")
 
         if not type_node:
             return False
@@ -126,9 +126,9 @@ class CAPLPatterns:
                     return True
 
         # Option 2: direct type_identifier/specifier
-        type_node = ASTWalker.get_child_of_type(node, "type_specifier") or ASTWalker.get_child_of_type(
-            node, "type_identifier"
-        )
+        type_node = ASTWalker.get_child_of_type(
+            node, "type_specifier"
+        ) or ASTWalker.get_child_of_type(node, "type_identifier")
         if type_node:
             name = ASTWalker.get_text(type_node, source)
             if name in ["message", "frame"]:
@@ -158,8 +158,8 @@ class CAPLPatterns:
 
     @staticmethod
     def get_variable_name(var_node: Node, source: bytes | str) -> str | None:
-        """Extract variable name from a declaration node."""
-        if var_node.type != "declaration":
+        """Extract variable name from a declaration or parameter_declaration node."""
+        if var_node.type not in ("declaration", "parameter_declaration"):
             return None
 
         # Try init_declarator first
@@ -218,9 +218,9 @@ class CAPLPatterns:
                 return ASTWalker.get_text(name_node, source)
 
         # Check for type_specifier OR type_identifier
-        type_node = ASTWalker.get_child_of_type(decl_node, "type_specifier") or ASTWalker.get_child_of_type(
-            decl_node, "type_identifier"
-        )
+        type_node = ASTWalker.get_child_of_type(
+            decl_node, "type_specifier"
+        ) or ASTWalker.get_child_of_type(decl_node, "type_identifier")
         if type_node:
             return ASTWalker.get_text(type_node, source)
 

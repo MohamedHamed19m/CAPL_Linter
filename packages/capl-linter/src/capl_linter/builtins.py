@@ -1,0 +1,50 @@
+"""CAPL built-in functions, keywords, and types."""
+
+# This is a partial list and should be expanded based on CAPL documentation
+CAPL_BUILTINS = {
+    # System Functions
+    "write",
+    "writeLineEx",
+    "writeDbg",
+    "setTimer",
+    "setTimerCyclic",
+    "cancelTimer",
+    "timeNow",
+    "timeNowNS",
+    "resetCan",
+    "stop",
+    # Event types / Special handlers
+    "on",
+    "start",
+    "stopMeasurement",
+    "preStart",
+    "preStop",
+    "timer",
+    "message",
+    "key",
+    "errorFrame",
+    "sysVar",
+    # Types
+    "int",
+    "long",
+    "dword",
+    "word",
+    "byte",
+    "float",
+    "double",
+    "char",
+    "message",
+    "timer",
+    "msTimer",
+    "struct",
+    "enum",
+    # Math & Misc
+    "abs",
+    "sin",
+    "cos",
+    "sqrt",
+    "random",
+    "strncmp",
+    "strlen",
+    "elCount",
+}

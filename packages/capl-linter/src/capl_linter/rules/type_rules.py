@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from capl_symbol_db.database import SymbolDatabase
@@ -34,6 +35,20 @@ class MissingEnumKeywordRule(BaseRule):
 
         return issues
 
+    def fix(self, file_path: Path, issues: list[InternalIssue]) -> str:
+        lines = file_path.read_text(encoding="utf-8").split("\n")
+        keyword = "enum" if self.rule_id == "E004" else "struct"
+        for issue in sorted(issues, key=lambda x: x.line, reverse=True):
+            idx = issue.line - 1
+            if idx < len(lines):
+                # Extraction of type name from message is a bit hacky but consistent with old logic
+                match = re.search(r"Type '(\w+)'", issue.message)
+                if match:
+                    type_name = match.group(1)
+                    pattern = rf"(?<!\b{keyword}\s)\b{type_name}\b"
+                    lines[idx] = re.sub(pattern, f"{keyword} {type_name}", lines[idx], count=1)
+        return "\n".join(lines)
+
 
 class MissingStructKeywordRule(BaseRule):
     """Detect struct types used without 'struct' keyword."""
@@ -61,3 +76,7 @@ class MissingStructKeywordRule(BaseRule):
                 )
 
         return issues
+
+    def fix(self, file_path: Path, issues: list[InternalIssue]) -> str:
+        # Same logic as enum rule
+        return MissingEnumKeywordRule.fix(self, file_path, issues)

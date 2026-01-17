@@ -13,6 +13,8 @@ class SymbolInfo:
     declaration_position: str | None = None
     parent_symbol: str | None = None
     context: str | None = None
+    param_count: int | None = None
+    has_body: bool | None = None
 
 
 @dataclass

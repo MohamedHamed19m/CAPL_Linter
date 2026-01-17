@@ -1,4 +1,9 @@
 from .rules.base import BaseRule
+from .rules.semantic_rules import (
+    UndefinedSymbolRule,
+    DuplicateFunctionRule,
+    CircularIncludeRule,
+)
 from .rules.syntax_rules import (
     ExternKeywordRule,
     FunctionDeclarationRule,
@@ -38,6 +43,10 @@ class RuleRegistry:
             # Variable Rules (E006-E007)
             VariableOutsideBlockRule(),
             MidBlockVariableRule(),
+            # Semantic Rules (E011-E013)
+            UndefinedSymbolRule(),
+            DuplicateFunctionRule(),
+            CircularIncludeRule(),
         ]
 
         for rule in builtin_rules:

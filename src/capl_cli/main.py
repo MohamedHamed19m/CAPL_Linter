@@ -3,10 +3,12 @@ from pathlib import Path
 import typer
 from capl_linter.autofix import AutoFixEngine
 from capl_linter.engine import LinterEngine
+from capl_linter.registry import registry
 from capl_symbol_db.database import SymbolDatabase
 from capl_symbol_db.extractor import SymbolExtractor
 from capl_symbol_db.xref import CrossReferenceBuilder
 
+from .config import LintConfig
 from .converters import internal_issue_to_lint_issue
 
 app = typer.Typer(help="CAPL Static Analyzer - Analyze CAPL code for issues and dependencies")
@@ -16,18 +18,28 @@ app = typer.Typer(help="CAPL Static Analyzer - Analyze CAPL code for issues and 
 def lint(
     files: list[Path] = typer.Argument(None, help="Files to lint"),
     project: bool = typer.Option(False, help="Lint entire project"),
+    config_file: Path = typer.Option(Path(".capl-lint.toml"), help="Path to config file"),
     severity: str = typer.Option("STYLE", help="Minimum severity to show"),
     db: str = typer.Option("aic.db", help="Database path"),
     fix: bool = typer.Option(False, help="Automatically fix issues"),
 ):
     """Run linter on CAPL files"""
-    engine = LinterEngine(db_path=db)
+    config = LintConfig(config_file)
+    engine = LinterEngine(db_path=db, custom_builtins=config.builtins)
+    enabled_rules = config.apply_to_registry(registry)
     all_issues = []
 
     if project:
-        # To be implemented: analyze_project in engine
-        typer.echo("Project linting not fully implemented in workspace yet")
-        raise typer.Exit(code=1)
+        # If no files provided, scan current directory
+        root = Path.cwd()
+        typer.echo(f"Scanning project at {root}...")
+        engine.analyze_project(root)
+        files = list(root.glob("**/*.can")) + list(root.glob("**/*.cin"))
+    elif files:
+        # Even for single files, scan surrounding folder for better context
+        # (Heuristic: scan same directory to find local includes/definitions)
+        for f in files:
+            engine.analyze_project(f.parent)
 
     if not files:
         typer.echo("Error: Provide files or use --project")
@@ -40,7 +52,7 @@ def lint(
 
         while passes < max_passes:
             passes += 1
-            current_issues = engine.analyze_file(file_path, force=(passes > 1))
+            current_issues = engine.analyze_file(file_path, force=(passes > 1), rules=enabled_rules)
 
             if not fix:
                 break
@@ -51,16 +63,8 @@ def lint(
 
             autofix = AutoFixEngine()
 
-            # Priority list for fixes
-            priority = [
-                "E004",  # missing-enum-keyword
-                "E005",  # missing-struct-keyword
-                "E002",  # function-declaration
-                "E003",  # global-type-definition
-                "E006",  # variable-outside-block
-                "E007",  # variable-mid-block
-                "E008",  # arrow-operator
-            ]
+            # Priority list for fixes (updated with new IDs if they changed)
+            priority = ["E004", "E005", "E002", "E003", "E006", "E007", "E008"]
 
             target_rule = None
             for r in priority:
@@ -72,7 +76,9 @@ def lint(
                 target_rule = fixable[0].rule_id
 
             rule_issues = [i for i in fixable if i.rule_id == target_rule]
-            typer.echo(f"  🔧 Applying fixes for {target_rule} ({len(rule_issues)} issues)...")
+            typer.echo(
+                f"  🔧 Applying fixes for {target_rule} ({len(rule_issues)} issues) in {file_path.name}..."
+            )
 
             new_content = autofix.apply_fixes(file_path, rule_issues)
             file_path.write_text(new_content, encoding="utf-8")
@@ -84,10 +90,20 @@ def lint(
 
     # Convert to external models and print (simplified report for now)
     external_issues = [internal_issue_to_lint_issue(i) for i in all_issues]
-    for issue in external_issues:
-        typer.echo(
-            f"{issue.severity}: {issue.file_path}:{issue.line_number} [{issue.rule_id}] - {issue.message}"
-        )
+
+    # Sort and filter by severity
+    severity_rank = {"ERROR": 3, "WARNING": 2, "STYLE": 1}
+    min_rank = severity_rank.get(severity.upper(), 1)
+
+    reported_count = 0
+    for issue in sorted(external_issues, key=lambda x: (x.file_path, x.line_number)):
+        if severity_rank.get(issue.severity, 0) >= min_rank:
+            typer.echo(
+                f"{issue.severity}: {issue.file_path}:{issue.line_number} [{issue.rule_id}] - {issue.message}"
+            )
+            reported_count += 1
+
+    typer.echo(f"\nTotal issues found: {len(external_issues)} ({reported_count} reported)")
 
     errors = sum(1 for i in external_issues if i.severity == "ERROR")
     if errors > 0:

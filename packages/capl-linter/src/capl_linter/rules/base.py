@@ -42,6 +42,18 @@ class BaseRule(ABC):
         """Run the check and return found issues."""
         pass
 
+    def fix(self, file_path: Path, issues: list[InternalIssue]) -> str:
+        """Apply auto-fixes for the detected issues.
+
+        Args:
+            file_path: Path to the file to fix
+            issues: List of issues to fix (all belonging to this rule)
+
+        Returns:
+            Modified file content as a string
+        """
+        return file_path.read_text(encoding="utf-8")
+
     # Helper method for consistent issue creation
     def _create_issue(
         self,

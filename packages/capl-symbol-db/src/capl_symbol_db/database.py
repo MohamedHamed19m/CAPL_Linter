@@ -38,6 +38,8 @@ class SymbolDatabase:
                         declaration_position TEXT,
                         parent_symbol TEXT,
                         context TEXT,
+                        param_count INTEGER,
+                        has_body BOOLEAN,
                         FOREIGN KEY (file_id) REFERENCES files(file_id)
                     )
                 """)
@@ -140,8 +142,9 @@ class SymbolDatabase:
                     conn.execute(
                         """
                         INSERT INTO symbols (file_id, symbol_name, symbol_type, line_number, 
-                                          signature, scope, declaration_position, parent_symbol, context)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                          signature, scope, declaration_position, parent_symbol, 
+                                          context, param_count, has_body)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                         (
                             file_id,
@@ -153,6 +156,8 @@ class SymbolDatabase:
                             sym.declaration_position,
                             sym.parent_symbol,
                             sym.context,
+                            sym.param_count,
+                            sym.has_body,
                         ),
                     )
         finally:
@@ -168,5 +173,120 @@ class SymbolDatabase:
             )
             result = cursor.fetchone()
             return result[0] if result else None
+        finally:
+            conn.close()
+
+    def get_transitive_includes(self, file_path: Path) -> list[int]:
+        """Get IDs of all files included by this file (transitively)"""
+        file_path_abs = str(file_path.resolve())
+        conn = sqlite3.connect(self.db_path)
+        try:
+            # Recursive CTE to find all included files
+            cursor = conn.execute(
+                """
+                WITH RECURSIVE transitive_includes(id) AS (
+                    SELECT included_file_id 
+                    FROM includes 
+                    JOIN files ON includes.source_file_id = files.file_id
+                    WHERE files.file_path = ? AND included_file_id IS NOT NULL
+                    
+                    UNION
+                    
+                    SELECT i.included_file_id
+                    FROM includes i
+                    JOIN transitive_includes ti ON i.source_file_id = ti.id
+                    WHERE i.included_file_id IS NOT NULL
+                )
+                SELECT id FROM transitive_includes
+                """,
+                (file_path_abs,),
+            )
+            return [row[0] for row in cursor.fetchall()]
+        finally:
+            conn.close()
+
+    def get_visible_symbols(self, file_path: Path) -> dict[str, list[dict]]:
+        """Get all symbols visible to this file (own symbols + transitively included)"""
+        file_path_abs = str(file_path.resolve())
+        include_ids = self.get_transitive_includes(file_path)
+
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            # Get file_id of current file
+            cursor = conn.execute("SELECT file_id FROM files WHERE file_path = ?", (file_path_abs,))
+            res = cursor.fetchone()
+            if not res:
+                return {"functions": [], "variables": [], "constants": [], "event_handlers": []}
+            file_id = res[0]
+
+            all_ids = [file_id] + include_ids
+            placeholders = ",".join("?" * len(all_ids))
+
+            cursor = conn.execute(
+                f"""
+                SELECT symbol_name, symbol_type, scope, parent_symbol, context, param_count
+                FROM symbols
+                WHERE file_id IN ({placeholders})
+                """,
+                all_ids,
+            )
+
+            symbols = {"functions": [], "variables": [], "constants": [], "event_handlers": []}
+            for row in cursor.fetchall():
+                s_type = row["symbol_type"]
+                s_data = dict(row)
+                if s_type == "function":
+                    symbols["functions"].append(s_data)
+                elif s_type == "variable":
+                    symbols["variables"].append(s_data)
+                elif s_type == "constant":
+                    symbols["constants"].append(s_data)
+                elif s_type == "event_handler":
+                    symbols["event_handlers"].append(s_data)
+
+            return symbols
+        finally:
+            conn.close()
+
+    def detect_circular_includes(self, file_path: Path) -> list[list[str]]:
+        """Detect circular include dependencies starting from a file"""
+        file_path_abs = str(file_path.resolve())
+        conn = sqlite3.connect(self.db_path)
+        try:
+            # Query all includes to build a graph
+            cursor = conn.execute("""
+                SELECT f1.file_path, f2.file_path
+                FROM includes i
+                JOIN files f1 ON i.source_file_id = f1.file_id
+                JOIN files f2 ON i.included_file_id = f2.file_id
+            """)
+            edges = cursor.fetchall()
+
+            adj = {}
+            for src, dst in edges:
+                if src not in adj:
+                    adj[src] = []
+                adj[src].append(dst)
+
+            cycles = []
+            visited = set()
+            path = []
+
+            def find_cycles(u):
+                visited.add(u)
+                path.append(u)
+
+                for v in adj.get(u, []):
+                    if v in path:
+                        idx = path.index(v)
+                        cycles.append(path[idx:] + [v])
+                    elif v not in visited:
+                        find_cycles(v)
+
+                path.pop()
+
+            find_cycles(file_path_abs)
+            return cycles
         finally:
             conn.close()
