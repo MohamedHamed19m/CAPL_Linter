@@ -13,8 +13,7 @@
 
 *   **pytest:** The chosen framework for running tests.
 *   **pytest-cov:** Provides code coverage reporting to ensure high test quality.
-*   **black:** Used for automated code formatting, maintaining consistent code style.
-*   **ruff:** A high-performance Python linter for identifying code quality issues.
+*   **ruff:** A high-performance Python tool for both linting (identifying quality issues) and formatting (replacing black).
 *   **mypy:** A static type checker to ensure type correctness and improve code reliability.
 
 ## 3. Additional Context
