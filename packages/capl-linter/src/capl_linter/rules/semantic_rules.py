@@ -128,12 +128,12 @@ class DuplicateFunctionRule(BaseRule):
 
 
 class CircularIncludeRule(BaseRule):
-    """E013: Detect circular include dependencies"""
+    """W001: Detect circular include dependencies"""
 
-    rule_id = "E013"
+    rule_id = "W001"
     name = "circular-include"
-    severity = Severity.ERROR
-    description = "Circular dependency detected in #include directives."
+    severity = Severity.WARNING
+    description = "Circular dependency detected. While allowed in CAPL, this suggests poor file structure."
 
     def check(self, file_path: Path, db: SymbolDatabase) -> list[InternalIssue]:
         issues = []
@@ -146,7 +146,7 @@ class CircularIncludeRule(BaseRule):
                 self._create_issue(
                     file_path=file_path,
                     line=1,  # Usually reported at top of file
-                    message=f"Circular include detected: {' -> '.join(cycle_names)}",
+                    message=f"Circular include detected: {' -> '.join(cycle_names)}. Consider refactoring to avoid cycles.",
                 )
             )
 

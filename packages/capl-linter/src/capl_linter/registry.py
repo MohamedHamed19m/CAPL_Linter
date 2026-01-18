@@ -43,10 +43,11 @@ class RuleRegistry:
             # Variable Rules (E006-E007)
             VariableOutsideBlockRule(),
             MidBlockVariableRule(),
-            # Semantic Rules (E011-E013)
+            # Semantic Rules (E011-E012)
             UndefinedSymbolRule(),
             DuplicateFunctionRule(),
-            CircularIncludeRule(),
+            # Warning Rules
+            CircularIncludeRule(),  # W001
         ]
 
         for rule in builtin_rules:

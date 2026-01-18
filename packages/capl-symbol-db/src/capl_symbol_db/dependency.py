@@ -46,8 +46,7 @@ class DependencyAnalyzer:
                 
                 included_file_id = None
                 if resolved_path:
-                    with open(resolved_path, "rb") as f:
-                        included_file_id = self.db.store_file(resolved_path, f.read())
+                    included_file_id = self.db.get_or_create_file_id(resolved_path)
                 
                 include_data.append({
                     "path_node": path_node,

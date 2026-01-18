@@ -132,6 +132,33 @@ class SymbolDatabase:
         finally:
             conn.close()
 
+    def get_or_create_file_id(self, file_path: Path) -> int:
+        """Get ID for a file, creating a placeholder entry if needed"""
+        file_path_abs = str(file_path.resolve())
+        conn = sqlite3.connect(self.db_path)
+        try:
+            with conn:
+                # Try insert with NULL hash
+                # We use parse_success=0 as it's not parsed yet
+                try:
+                    cursor = conn.execute(
+                        """
+                        INSERT INTO files (file_path, parse_success, file_hash)
+                        VALUES (?, 0, NULL)
+                        RETURNING file_id
+                        """,
+                        (file_path_abs,),
+                    )
+                    return cursor.fetchone()[0]
+                except sqlite3.IntegrityError:
+                    # Already exists
+                    cursor = conn.execute(
+                        "SELECT file_id FROM files WHERE file_path = ?", (file_path_abs,)
+                    )
+                    return cursor.fetchone()[0]
+        finally:
+            conn.close()
+
     def store_symbols(self, file_id: int, symbols: list[SymbolInfo]):
         """Store symbols for a specific file"""
         conn = sqlite3.connect(self.db_path)
