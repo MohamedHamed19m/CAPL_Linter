@@ -53,14 +53,14 @@ cd capl-analyzer
 uv sync
 
 # Run the linter
-uv run capl-lint MyNode.can
+uv run drift lint MyNode.can
 ```
 
 ## 🏗️ Project Structure
 
 The project is organized into a modular monorepo structure:
 
-- **`capl-cli`** (Root): User-facing CLI built with `typer`.
+- **`drift`** (Root): User-facing CLI built with `typer`.
 - **`packages/capl-tree-sitter`**: Core CAPL parsing using tree-sitter.
 - **`packages/capl-symbol-db`**: Symbol extraction and persistent storage (SQLite).
 - **`packages/capl-linter`**: Analysis engine and auto-fix logic.

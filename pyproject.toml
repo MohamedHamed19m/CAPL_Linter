@@ -1,5 +1,5 @@
 [project]
-name = "capl-cli"
+name = "drift"
 version = "0.1.0"
 description = "Static analysis and linting tools for CAPL (CANoe/CANalyzer Programming Language)"
 authors = [
@@ -29,8 +29,7 @@ dependencies = [
 ]
 
 [project.scripts]
-capl-lint = "capl_cli.main:app"
-capl-analyze = "capl_cli.main:app"
+drift = "capl_cli.main:app"
 
 [tool.uv]
 package = true

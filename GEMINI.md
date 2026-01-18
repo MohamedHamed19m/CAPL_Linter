@@ -40,7 +40,7 @@ The codebase is split into independent library packages and a root CLI package, 
     *   `rules/`: Individual rule implementations categorized into `syntax`, `type`, `variable`, and `semantic` rules.
 
 ### 2. CLI Package (Root)
-*   **`src/capl_cli/`**: The `capl-cli` package.
+*   **`src/capl_cli/`**: The `drift` package.
     *   `main.py`: Entry point with support for `--project` and `--fix`.
     *   `config.py`: Loads configuration from `.capl-lint.toml`.
 
@@ -82,11 +82,11 @@ uv lock --upgrade
 ### Common Commands
 *   **Run Linter with Auto-Fix:**
     ```bash
-    uv run capl-lint lint --fix <file.can>
+    uv run drift lint --fix <file.can>
     ```
 *   **Run Analysis (Dependency/Symbol Dump):**
     ```bash
-    uv run capl-analyze analyze <file.can>
+    uv run drift analyze <file.can>
     ```
 *   **Run All Tests:**
     ```bash
@@ -101,3 +101,6 @@ uv lock --upgrade
 *   **Grammar**: We use `tree-sitter-c` as a base. Keywords like `variables` and `on start` are handled as errors or via sibling text lookups.
 *   **Parsing**: Use `CAPLQueryHelper` for complex structure matching. Avoid regex for nested code.
 *   **Iterative Fixes**: Always assume a fix might shift line numbers. The iterative loop (`max_passes=10`) in `main.py` is the safety mechanism.
+
+## User Notes:
+* when the user want you to commit the changes run this command (git status; git diff --staged; git log -n 3).
