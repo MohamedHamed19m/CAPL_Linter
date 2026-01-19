@@ -24,6 +24,7 @@ dependencies = [
     "capl-tree-sitter",
     "capl-symbol-db",
     "capl-linter",
+    "capl-formatter",
     "pydantic>=2.0.0",
     "typer>=0.9.0",
 ]
@@ -47,6 +48,7 @@ members = ["packages/*"]
 capl-tree-sitter = { workspace = true }
 capl-symbol-db = { workspace = true }
 capl-linter = { workspace = true }
+capl-formatter = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
