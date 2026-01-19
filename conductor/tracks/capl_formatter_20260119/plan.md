@@ -1,0 +1,93 @@
+# Implementation Plan: CAPL Formatter (`capl-formatter`)
+
+This plan follows the Test-Driven Development (TDD) methodology and SOLID principles as outlined in the project's workflow and specification.
+
+## Phase 1: Package Scaffold & Core Engine
+- [ ] Task: Initialize `packages/capl-formatter/` workspace package
+    - [ ] Create `pyproject.toml`, `README.md`, and directory structure
+    - [ ] Configure `uv` workspace to include the new package
+    - [ ] Set up basic `pytest` configuration for the package
+- [ ] Task: Implement Core Abstractions (SOLID)
+    - [ ] Write tests for rule discovery and strategy execution
+    - [ ] Implement `BaseFormattingRule` interface
+    - [ ] Implement `BaseRewriteStrategy` and a basic `TokenRewriteStrategy`
+    - [ ] Implement `FormatterConfig` dataclass/model
+- [ ] Task: Implement `FormatterEngine`
+    - [ ] Write tests for engine orchestration (applying multiple rules)
+    - [ ] Implement `FormatterEngine` to manage the flow of formatting a single file
+    - [ ] **Implement `FormatResult` and `FormatResults` dataclasses for structured output**
+    - [ ] Implement parse error handling (skip and log) within the engine
+- [ ] Task: Conductor - User Manual Verification 'Phase 1: Package Scaffold & Core Engine' (Protocol in workflow.md)
+
+## Phase 2: Fundamental Syntax Formatting
+- [ ] Task: Implement Indentation and Whitespace Rules
+    - [ ] Write tests for 2-space indentation and trailing whitespace removal
+    - [ ] Implement `IndentationRule`
+    - [ ] Implement `WhitespaceCleanupRule` (trailing space, EOF newline, blank line collapsing)
+- [ ] Task: Implement Brace and Spacing Rules
+    - [ ] Write tests for K&R brace style and operator/comma spacing
+    - [ ] Implement `BraceStyleRule`
+    - [ ] Implement `SpacingRule`
+- [ ] **Task: Implement Quote Normalization Rule**
+    - [ ] **Write tests for double-quote enforcement in string literals**
+    - [ ] **Implement `QuoteNormalizationRule` (validate double quotes, flag single quotes as errors)**
+- [ ] Task: Implement Blank Line Rules
+    - [ ] Write tests for function/handler spacing (1 blank line) and major block spacing (2 blank lines)
+    - [ ] Implement `BlankLineRule`
+- [ ] Task: Conductor - User Manual Verification 'Phase 2: Fundamental Syntax Formatting' (Protocol in workflow.md)
+
+## Phase 3: Comment & Pragma Management
+- [ ] Task: Implement Comment Reflow
+    - [ ] Write tests for line (//) and block (/* */) comment reflowing at 100 chars
+    - [ ] Implement `CommentReflowRule` with JSDoc/Doxygen alignment support
+- [ ] Task: Implement Preservation Logic
+    - [ ] Write tests for ASCII art header preservation (/****, /*====)
+    - [ ] Implement preservation logic within `CommentReflowRule`
+- [ ] Task: Implement Pragma Handling
+    - [ ] Write tests for `#pragma library` preservation and positioning
+    - [ ] Implement `PragmaHandlingRule`
+- [ ] Task: Conductor - User Manual Verification 'Phase 3: Comment & Pragma Management' (Protocol in workflow.md)
+
+## Phase 4: Structural Organization
+- [ ] Task: Implement Include Sorting
+    - [ ] Write tests for .cin/.can grouping and alphabetical sorting
+    - [ ] Implement `IncludeSortingRule` (grouped, sorted, unique)
+- [ ] Task: Implement Variable Ordering
+    - [ ] Write tests for variable type hierarchy and alphabetical sorting
+    - [ ] Implement `VariableOrderingRule` with inline comment preservation
+- [ ] **Task: Implement Event Handler Ordering (Optional)**
+    - [ ] **Write tests for standardized handler order (on start → on message → on timer → functions)**
+    - [ ] **Implement `EventHandlerOrderingRule`**
+- [ ] Task: Conductor - User Manual Verification 'Phase 4: Structural Organization' (Protocol in workflow.md)
+
+## Phase 5: Intelligent Line Wrapping
+- [ ] Task: Implement Definition Wrapping (Chop Down)
+    - [ ] Write tests for long function signatures forced to "Chop Down"
+    - [ ] Implement `DefinitionWrappingRule`
+- [ ] Task: Implement Call and Initializer Wrapping (Heuristic)
+    - [ ] Write tests for "Fit as many as possible" calls and smart initializer wrapping
+    - [ ] Implement `CallWrappingRule` and `InitializerWrappingRule`
+- [ ] Task: Conductor - User Manual Verification 'Phase 5: Intelligent Line Wrapping' (Protocol in workflow.md)
+
+## Phase 6: CLI Integration & Configuration
+- [ ] Task: Implement `drift format` command
+    - [ ] Write tests for CLI argument parsing and multi-path support
+    - [ ] **Write tests for handling large file sets (50+ files)**
+    - [ ] Integrate `FormatterEngine` into the `drift` CLI
+- [ ] Task: Implement `--check` and `--json` flags
+    - [ ] Write tests for check-only mode and JSON output formatting
+    - [ ] Implement violation reporting and exit code logic (0 success, 1 failure/violation)
+- [ ] Task: Configuration File Support
+    - [ ] Write tests for `.capl-format.toml` loading and overrides
+    - [ ] Implement configuration discovery and merging logic
+- [ ] Task: Conductor - User Manual Verification 'Phase 6: CLI Integration & Configuration' (Protocol in workflow.md)
+
+## Phase 7: Final Polish & Documentation
+- [ ] Task: Project-wide Integration Testing
+    - [ ] Run formatter on all `examples/` files and verify output stability (idempotency)
+    - [ ] Fix any edge cases discovered during bulk formatting
+    - [ ] **Create regression test suite with "before/after" snapshots of formatted files**
+- [ ] Task: Update Documentation
+    - [ ] Update `README.md` with formatting features and examples
+    - [ ] Add a "Formatting Guide" to the `docs/` directory
+- [ ] Task: Conductor - User Manual Verification 'Phase 7: Final Polish & Documentation' (Protocol in workflow.md)
