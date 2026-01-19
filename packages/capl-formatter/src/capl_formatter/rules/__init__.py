@@ -4,6 +4,7 @@ from .whitespace import WhitespaceCleanupRule
 from .spacing import SpacingRule, BraceStyleRule
 from .quotes import QuoteNormalizationRule
 from .blank_lines import BlankLineRule
+from .block_expansion import BlockExpansionRule
 
 __all__ = [
     "BaseFormattingRule", 
@@ -13,5 +14,6 @@ __all__ = [
     "SpacingRule",
     "BraceStyleRule",
     "QuoteNormalizationRule",
-    "BlankLineRule"
+    "BlankLineRule",
+    "BlockExpansionRule"
 ]

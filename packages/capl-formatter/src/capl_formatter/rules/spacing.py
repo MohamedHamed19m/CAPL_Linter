@@ -51,6 +51,10 @@ class SpacingRule(BaseFormattingRule):
             # Cleanup multiple spaces (optional, but good)
             # code = re.sub(r'  +', ' ', code) # Might be too aggressive
             
+            # 4. Keyword Spacing: if( -> if (
+            # Keywords: if, while, for, switch
+            code = re.sub(r'\b(if|while|for|switch)\(', r'\1 (', code)
+            
             return code
 
         context.source = apply_text_transformation(context.source, transform)
