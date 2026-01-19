@@ -8,8 +8,25 @@ from capl_symbol_db.database import SymbolDatabase
 from capl_symbol_db.extractor import SymbolExtractor
 from capl_symbol_db.xref import CrossReferenceBuilder
 
-from .config import LintConfig
+from .config import LintConfig, FormatConfig
 from .converters import internal_issue_to_lint_issue
+
+from capl_formatter.engine import FormatterEngine
+from capl_formatter.models import FormatterConfig
+from capl_formatter.rules import (
+    QuoteNormalizationRule,
+    BlockExpansionRule,
+    BraceStyleRule,
+    SpacingRule,
+    IndentationRule,
+    BlankLineRule,
+    IncludeSortingRule,
+    VariableOrderingRule,
+    DefinitionWrappingRule,
+    CallWrappingRule,
+    InitializerWrappingRule,
+    WhitespaceCleanupRule
+)
 
 app = typer.Typer(help="CAPL Static Analyzer - Analyze CAPL code for issues and dependencies")
 
@@ -107,6 +124,112 @@ def lint(
 
     errors = sum(1 for i in external_issues if i.severity == "ERROR")
     if errors > 0:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def format(
+    paths: list[Path] = typer.Argument(None, help="Files or directories to format"),
+    check: bool = typer.Option(False, "--check", help="Check for formatting violations without modifying files"),
+    json_output: bool = typer.Option(False, "--json", help="Output results in JSON format"),
+    config_file: Path = typer.Option(Path(".capl-format.toml"), help="Path to formatter config file"),
+):
+    """Format CAPL files according to opinionated standards."""
+    # 1. Collect files
+    files = []
+    if not paths:
+        # Default to current directory if no paths provided
+        paths = [Path.cwd()]
+        
+    for p in paths:
+        if p.is_file():
+            if p.suffix.lower() in [".can", ".cin"]:
+                files.append(p)
+        elif p.is_dir():
+            files.extend(p.glob("**/*.can"))
+            files.extend(p.glob("**/*.cin"))
+
+    if not files:
+        if not json_output:
+            typer.echo("No CAPL files found to format.")
+        raise typer.Exit(code=0)
+
+    # 2. Setup Formatter
+    fmt_config = FormatConfig(config_file)
+    config = fmt_config.to_formatter_config()
+    engine = FormatterEngine(config)
+    
+    # Recommended Rule Order
+    engine.add_rule(QuoteNormalizationRule(config))
+    engine.add_rule(BlockExpansionRule(config))
+    engine.add_rule(BraceStyleRule(config))
+    engine.add_rule(SpacingRule(config))
+    engine.add_rule(DefinitionWrappingRule(config))
+    engine.add_rule(CallWrappingRule(config))
+    engine.add_rule(InitializerWrappingRule(config))
+    engine.add_rule(IndentationRule(config))
+    engine.add_rule(BlankLineRule(config))
+    engine.add_rule(IncludeSortingRule(config))
+    engine.add_rule(WhitespaceCleanupRule(config))
+
+    # 3. Process files
+    results = []
+    modified_count = 0
+    error_count = 0
+    
+    for f in files:
+        try:
+            source = f.read_text(encoding="utf-8")
+            result = engine.format_string(source, str(f))
+            
+            if result.errors:
+                error_count += 1
+            elif result.modified:
+                modified_count += 1
+                if not check:
+                    f.write_text(result.source, encoding="utf-8")
+            
+            results.append({
+                "file": str(f),
+                "modified": result.modified,
+                "errors": result.errors
+            })
+        except Exception as e:
+            error_count += 1
+            results.append({
+                "file": str(f),
+                "modified": False,
+                "errors": [str(e)]
+            })
+
+    # 4. Report
+    if json_output:
+        import json
+        typer.echo(json.dumps({
+            "results": results,
+            "total_files": len(files),
+            "modified_files": modified_count,
+            "error_files": error_count
+        }, indent=2))
+    else:
+        for r in results:
+            status = "MODIFIED" if r["modified"] else "UNCHANGED"
+            if check and r["modified"]:
+                status = "WOULD BE MODIFIED"
+            
+            if r["errors"]:
+                status = "ERROR"
+                typer.echo(f"{status}: {r['file']} - {r['errors'][0]}")
+            else:
+                if r["modified"] or not check:
+                    typer.echo(f"{status}: {r['file']}")
+
+        typer.echo(f"\nSummary: {len(files)} files processed. {modified_count} modified, {error_count} errors.")
+
+    # 5. Exit code
+    if error_count > 0:
+        raise typer.Exit(code=1)
+    if check and modified_count > 0:
         raise typer.Exit(code=1)
 
 
