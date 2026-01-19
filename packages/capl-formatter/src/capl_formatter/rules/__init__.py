@@ -5,6 +5,8 @@ from .spacing import SpacingRule, BraceStyleRule
 from .quotes import QuoteNormalizationRule
 from .blank_lines import BlankLineRule
 from .block_expansion import BlockExpansionRule
+from .pragmas import PragmaHandlingRule
+from .comments import CommentReflowRule
 
 __all__ = [
     "BaseFormattingRule", 
@@ -15,5 +17,7 @@ __all__ = [
     "BraceStyleRule",
     "QuoteNormalizationRule",
     "BlankLineRule",
-    "BlockExpansionRule"
+    "BlockExpansionRule",
+    "PragmaHandlingRule",
+    "CommentReflowRule"
 ]
