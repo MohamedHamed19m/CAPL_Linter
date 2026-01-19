@@ -51,17 +51,17 @@ This plan follows the Test-Driven Development (TDD) methodology and SOLID princi
     - [x] Implement `PragmaHandlingRule`
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Comment & Pragma Management' (Protocol in workflow.md)
 
-## Phase 4: Structural Organization
-- [ ] Task: Implement Include Sorting
-    - [ ] Write tests for .cin/.can grouping and alphabetical sorting
-    - [ ] Implement `IncludeSortingRule` (grouped, sorted, unique)
-- [ ] Task: Implement Variable Ordering
-    - [ ] Write tests for variable type hierarchy and alphabetical sorting
-    - [ ] Implement `VariableOrderingRule` with inline comment preservation
-- [ ] **Task: Implement Event Handler Ordering (Optional)**
+## Phase 4: Structural Organization [checkpoint: 050e6d8]
+- [x] Task: Implement Include Sorting 050e6d8
+    - [x] Write tests for .cin/.can grouping and alphabetical sorting
+    - [x] Implement `IncludeSortingRule` (grouped, sorted, unique)
+- [x] Task: Implement Variable Ordering 050e6d8
+    - [x] Write tests for variable type hierarchy and alphabetical sorting
+    - [x] Implement `VariableOrderingRule` with inline comment preservation
+- [x] **Task: Implement Event Handler Ordering (Optional)** (Skipped)
     - [ ] **Write tests for standardized handler order (on start → on message → on timer → functions)**
     - [ ] **Implement `EventHandlerOrderingRule`**
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Structural Organization' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Structural Organization' (Protocol in workflow.md)
 
 ## Phase 5: Intelligent Line Wrapping
 - [ ] Task: Implement Definition Wrapping (Chop Down)
