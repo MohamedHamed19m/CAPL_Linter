@@ -19,22 +19,25 @@ This plan follows the Test-Driven Development (TDD) methodology and SOLID princi
     - [x] Implement parse error handling (skip and log) within the engine
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Package Scaffold & Core Engine' (Protocol in workflow.md)
 
-## Phase 2: Fundamental Syntax Formatting
-- [ ] Task: Implement Indentation and Whitespace Rules
-    - [ ] Write tests for 2-space indentation and trailing whitespace removal
-    - [ ] Implement `IndentationRule`
-    - [ ] Implement `WhitespaceCleanupRule` (trailing space, EOF newline, blank line collapsing)
-- [ ] Task: Implement Brace and Spacing Rules
-    - [ ] Write tests for K&R brace style and operator/comma spacing
-    - [ ] Implement `BraceStyleRule`
-    - [ ] Implement `SpacingRule`
-- [ ] **Task: Implement Quote Normalization Rule**
-    - [ ] **Write tests for double-quote enforcement in string literals**
-    - [ ] **Implement `QuoteNormalizationRule` (validate double quotes, flag single quotes as errors)**
-- [ ] Task: Implement Blank Line Rules
-    - [ ] Write tests for function/handler spacing (1 blank line) and major block spacing (2 blank lines)
-    - [ ] Implement `BlankLineRule`
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Fundamental Syntax Formatting' (Protocol in workflow.md)
+## Phase 2: Fundamental Syntax Formatting [checkpoint: e973b84]
+- [x] Task: Implement Indentation and Whitespace Rules 739f531
+    - [x] Write tests for 2-space indentation and trailing whitespace removal
+    - [x] Implement `IndentationRule`
+    - [x] Implement `WhitespaceCleanupRule` (trailing space, EOF newline, blank line collapsing)
+- [x] Task: Implement Brace and Spacing Rules de0cb3e
+    - [x] Write tests for K&R brace style and operator/comma spacing
+    - [x] Implement `BraceStyleRule`
+    - [x] Implement `SpacingRule`
+- [x] **Task: Implement Quote Normalization Rule** 25bd81f
+    - [x] **Write tests for double-quote enforcement in string literals**
+    - [x] **Implement `QuoteNormalizationRule` (validate double quotes, flag single quotes as errors)**
+- [x] Task: Implement Blank Line Rules 5b28f61
+    - [x] Write tests for function/handler spacing (1 blank line) and major block spacing (2 blank lines)
+    - [x] Implement `BlankLineRule`
+- [x] Task: Implement Block Expansion and Keyword Spacing e973b84
+    - [x] Implement `BlockExpansionRule` to expand blocks
+    - [x] Update `SpacingRule` for keyword spacing
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Fundamental Syntax Formatting' (Protocol in workflow.md)
 
 ## Phase 3: Comment & Pragma Management
 - [ ] Task: Implement Comment Reflow
