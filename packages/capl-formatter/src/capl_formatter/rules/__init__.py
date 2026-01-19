@@ -7,6 +7,7 @@ from .blank_lines import BlankLineRule
 from .block_expansion import BlockExpansionRule
 from .pragmas import PragmaHandlingRule
 from .comments import CommentReflowRule
+from .structure import IncludeSortingRule, VariableOrderingRule
 
 __all__ = [
     "BaseFormattingRule", 
@@ -19,5 +20,7 @@ __all__ = [
     "BlankLineRule",
     "BlockExpansionRule",
     "PragmaHandlingRule",
-    "CommentReflowRule"
+    "CommentReflowRule",
+    "IncludeSortingRule",
+    "VariableOrderingRule"
 ]
