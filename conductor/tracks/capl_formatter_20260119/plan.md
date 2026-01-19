@@ -3,20 +3,20 @@
 This plan follows the Test-Driven Development (TDD) methodology and SOLID principles as outlined in the project's workflow and specification.
 
 ## Phase 1: Package Scaffold & Core Engine
-- [ ] Task: Initialize `packages/capl-formatter/` workspace package
-    - [ ] Create `pyproject.toml`, `README.md`, and directory structure
-    - [ ] Configure `uv` workspace to include the new package
-    - [ ] Set up basic `pytest` configuration for the package
-- [ ] Task: Implement Core Abstractions (SOLID)
-    - [ ] Write tests for rule discovery and strategy execution
-    - [ ] Implement `BaseFormattingRule` interface
-    - [ ] Implement `BaseRewriteStrategy` and a basic `TokenRewriteStrategy`
-    - [ ] Implement `FormatterConfig` dataclass/model
-- [ ] Task: Implement `FormatterEngine`
-    - [ ] Write tests for engine orchestration (applying multiple rules)
-    - [ ] Implement `FormatterEngine` to manage the flow of formatting a single file
-    - [ ] **Implement `FormatResult` and `FormatResults` dataclasses for structured output**
-    - [ ] Implement parse error handling (skip and log) within the engine
+- [x] Task: Initialize `packages/capl-formatter/` workspace package e02d3e9
+    - [x] Create `pyproject.toml`, `README.md`, and directory structure
+    - [x] Configure `uv` workspace to include the new package
+    - [x] Set up basic `pytest` configuration for the package
+- [x] Task: Implement Core Abstractions (SOLID) 063ce53
+    - [x] Write tests for rule discovery and strategy execution
+    - [x] Implement `BaseFormattingRule` interface
+    - [x] Implement `BaseRewriteStrategy` and a basic `TokenRewriteStrategy`
+    - [x] Implement `FormatterConfig` dataclass/model
+- [x] Task: Implement `FormatterEngine` 4e107a6
+    - [x] Write tests for engine orchestration (applying multiple rules)
+    - [x] Implement `FormatterEngine` to manage the flow of formatting a single file
+    - [x] **Implement `FormatResult` and `FormatResults` dataclasses for structured output**
+    - [x] Implement parse error handling (skip and log) within the engine
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Package Scaffold & Core Engine' (Protocol in workflow.md)
 
 ## Phase 2: Fundamental Syntax Formatting
