@@ -39,17 +39,17 @@ This plan follows the Test-Driven Development (TDD) methodology and SOLID princi
     - [x] Update `SpacingRule` for keyword spacing
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Fundamental Syntax Formatting' (Protocol in workflow.md)
 
-## Phase 3: Comment & Pragma Management
-- [ ] Task: Implement Comment Reflow
-    - [ ] Write tests for line (//) and block (/* */) comment reflowing at 100 chars
-    - [ ] Implement `CommentReflowRule` with JSDoc/Doxygen alignment support
-- [ ] Task: Implement Preservation Logic
-    - [ ] Write tests for ASCII art header preservation (/****, /*====)
-    - [ ] Implement preservation logic within `CommentReflowRule`
-- [ ] Task: Implement Pragma Handling
-    - [ ] Write tests for `#pragma library` preservation and positioning
-    - [ ] Implement `PragmaHandlingRule`
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Comment & Pragma Management' (Protocol in workflow.md)
+## Phase 3: Comment & Pragma Management [checkpoint: 28d4136]
+- [x] Task: Implement Comment Reflow 28d4136
+    - [x] Write tests for line (//) and block (/* */) comment reflowing at 100 chars
+    - [x] Implement `CommentReflowRule` with JSDoc/Doxygen alignment support
+- [x] Task: Implement Preservation Logic 28d4136
+    - [x] Write tests for ASCII art header preservation (/****, /*====)
+    - [x] Implement preservation logic within `CommentReflowRule`
+- [x] Task: Implement Pragma Handling 28d4136
+    - [x] Write tests for `#pragma library` preservation and positioning
+    - [x] Implement `PragmaHandlingRule`
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Comment & Pragma Management' (Protocol in workflow.md)
 
 ## Phase 4: Structural Organization
 - [ ] Task: Implement Include Sorting
