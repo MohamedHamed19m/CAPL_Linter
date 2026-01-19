@@ -3,6 +3,7 @@ from .indentation import IndentationRule
 from .whitespace import WhitespaceCleanupRule
 from .spacing import SpacingRule, BraceStyleRule
 from .quotes import QuoteNormalizationRule
+from .blank_lines import BlankLineRule
 
 __all__ = [
     "BaseFormattingRule", 
@@ -11,5 +12,6 @@ __all__ = [
     "WhitespaceCleanupRule",
     "SpacingRule",
     "BraceStyleRule",
-    "QuoteNormalizationRule"
+    "QuoteNormalizationRule",
+    "BlankLineRule"
 ]
