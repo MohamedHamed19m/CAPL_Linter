@@ -8,6 +8,7 @@ from .block_expansion import BlockExpansionRule
 from .pragmas import PragmaHandlingRule
 from .comments import CommentReflowRule
 from .structure import IncludeSortingRule, VariableOrderingRule
+from .wrapping import DefinitionWrappingRule, CallWrappingRule, InitializerWrappingRule
 
 __all__ = [
     "BaseFormattingRule", 
@@ -22,5 +23,8 @@ __all__ = [
     "PragmaHandlingRule",
     "CommentReflowRule",
     "IncludeSortingRule",
-    "VariableOrderingRule"
+    "VariableOrderingRule",
+    "DefinitionWrappingRule",
+    "CallWrappingRule",
+    "InitializerWrappingRule"
 ]
