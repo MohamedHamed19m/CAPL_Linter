@@ -40,3 +40,33 @@ def test_token_rewrite_strategy():
     strategy = TokenRewriteStrategy()
     source = "test"
     assert strategy.rewrite(source) == source
+
+def test_engine_parse_error_handling():
+    class ErrorRule(BaseFormattingRule):
+        def apply(self, context):
+            raise ValueError("Parse error simulation")
+            
+    config = FormatterConfig()
+    engine = FormatterEngine(config=config)
+    engine.add_rule(ErrorRule())
+    
+    source = "some code"
+    result = engine.format_string(source)
+    
+    assert result.modified is False
+    assert len(result.errors) > 0
+    assert "Parse error simulation" in result.errors[0]
+
+def test_engine_format_files(tmp_path):
+    f1 = tmp_path / "test1.can"
+    f1.write_text("old", encoding="utf-8")
+    
+    config = FormatterConfig()
+    engine = FormatterEngine(config=config)
+    engine.add_rule(MockRule())
+    
+    results = engine.format_files([str(f1)])
+    
+    assert results.total_files == 1
+    assert results.modified_files == 1
+    assert f1.read_text(encoding="utf-8") == "new"
