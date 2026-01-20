@@ -144,9 +144,6 @@ class SpacingRule(ASTRule):
             # FIX: Normalize spacing in function declarations
             # Pattern: word/identifier followed by ( with optional spaces
             # Replace with: identifier(
-            new_s = re.sub(r'(\w+)\s*\(\s*\)', r'\1()', new_s)
-            
-            # FIX: Remove spaces after ( and before )
             new_s = re.sub(r'\(\s+', '(', new_s)
             new_s = re.sub(r'\s+\)', ')', new_s)
             

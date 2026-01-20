@@ -78,14 +78,31 @@ class BlockExpansionRule(ASTRule):
         if len(members) <= 1:
             return  # Don't expand single-member structs/enums
         
-        # Add newlines between members that are on the same line
+        # Check if ANY members are on the same line (indicates single-line definition)
+        first_line = members[0].start_point[0]
+        needs_expansion = any(m.start_point[0] == first_line for m in members[1:])
+        
+        if not needs_expansion:
+            return  # Already multi-line, no changes needed
+        
+        # Add newlines between ALL members on the same line
         prev_member = None
         for member in members:
-            if prev_member and member.start_point[0] == prev_member.end_point[0]:
-                # Members on same line - insert newline before this one
-                transformations.append(Transformation(
-                    start_byte=member.start_byte,
-                    end_byte=member.start_byte,
-                    new_content="\n"
-                ))
+            if prev_member:
+                # Check if this member is on same line as previous
+                if member.start_point[0] == prev_member.end_point[0]:
+                    # Insert newline before this member
+                    transformations.append(Transformation(
+                        start_byte=member.start_byte,
+                        end_byte=member.start_byte,
+                        new_content="\n"
+                    ))
+                # Also check if member is on same line as ANY previous member
+                elif member.start_point[0] == first_line:
+                    # Still on first line, needs splitting
+                    transformations.append(Transformation(
+                        start_byte=member.start_byte,
+                        end_byte=member.start_byte,
+                        new_content="\n"
+                    ))
             prev_member = member

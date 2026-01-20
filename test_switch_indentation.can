@@ -1,0 +1,35 @@
+/*@!Encoding:65001*/
+
+void test_switch(){
+switch (var){
+case 1:
+printf("Case 1 is Matched.");
+break;
+case 2:
+printf("Case 2 is Matched.");
+break;
+case 3:
+printf("Case 3 is Matched.");
+break;
+default:
+printf("Default case is Matched.");
+break;
+}
+}
+
+void nested_switch(){
+  switch (level1){
+    case A:
+    switch (level2){
+      case X:
+      doSomething();
+      break;
+      case Y:
+      doOther();
+      break;
+    }
+    break;
+    default:
+    fallback();
+  }
+}

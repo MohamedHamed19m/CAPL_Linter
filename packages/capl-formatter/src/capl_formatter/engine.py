@@ -6,13 +6,7 @@ from .rules.base import FormattingRule, ASTRule, TextRule, FormattingContext, Tr
 from capl_tree_sitter.parser import CAPLParser
 
 class FormatterEngine:
-    """Core engine for formatting CAPL files using AST transformations.
-    
-    The engine follows a three-phase approach:
-    1. Structural Phase: Applies rules like splitting and spacing that change the AST.
-    2. Cleanup Phase: Normalizes vertical whitespace (blank lines).
-    3. Indentation Phase: Final precision alignment based on the stabilized structure.
-    """
+    """Core engine for formatting CAPL files using AST transformations."""
     def __init__(self, config: FormatterConfig):
         self.config = config
         self.rules: List[FormattingRule] = []
@@ -47,10 +41,10 @@ class FormatterEngine:
                             modified = True
                 if not pass_modified: break
             
-            # Phase 2: Vertical Whitespace Normalization (Final Pass)
+            # Phase 2: Vertical Whitespace Normalization
             current_source = self._cleanup_vertical_whitespace(current_source)
             
-            # Phase 3: Final Indentation (Ensures everything is aligned after structural changes)
+            # Phase 3: Final Indentation Pass
             parse_result = self.parser.parse_string(current_source)
             context = FormattingContext(source=current_source, file_path=file_path, tree=parse_result.tree)
             from .rules.indentation import IndentationRule
@@ -68,12 +62,13 @@ class FormatterEngine:
 
     def _cleanup_vertical_whitespace(self, source: str) -> str:
         """Standardizes blank lines at block boundaries and between items."""
-        # Collapse multiple blank lines
+        # 1. Collapse multiple blank lines to max 1
         source = re.sub(r'\n{3,}', r'\n\n', source)
-        # Block boundaries: remove blank lines at start/end of blocks
+        # 2. Remove blank lines at start of blocks
         source = re.sub(r'\{\s*\n\s*\n+', r'{\n', source)
+        # 3. Remove blank lines at end of blocks
         source = re.sub(r'\n\s*\n+\s*\}', r'\n}', source)
-        # Labels: ensure content follows colon on next line if it already started a new line
+        # 4. Remove blank lines after case/default labels
         source = re.sub(r':\s*\n\s*\n+', r':\n', source)
         return source
 
