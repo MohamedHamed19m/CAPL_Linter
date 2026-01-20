@@ -1,21 +1,21 @@
 /*@!Encoding:65001*/
 
 variables{
-  int x=1;
+    int x=1;
 
-  string name="test";
+    string name="test";
 
-  bool flag=true;
+    bool flag=true;
 
-  float pi=3.14;
+    float pi=3.14;
 
     struct Point{
-      int x;int y;
+        int x;int y;
     }
 
-  int a=1, b=2, c=3;
+    int a=1, b=2, c=3;
 
-  int[2][2][2]multi_dim=[[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
+    int[2][2][2]multi_dim=[[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
 }
 
 void f(){

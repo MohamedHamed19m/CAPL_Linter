@@ -4,7 +4,7 @@ from .base import ASTRule, FormattingContext, Transformation
 from ..models import FormatterConfig
 
 class IndentationRule(ASTRule):
-    """AST-based indentation rule."""
+    """AST-based indentation rule with proper switch case handling."""
     
     def __init__(self, config: FormatterConfig):
         self.config = config
@@ -33,11 +33,62 @@ class IndentationRule(ASTRule):
             ]
             
             # Record depth for the node's start line
-            # Overwrite if current_depth is deeper
             if start_row not in line_depths or current_depth > line_depths[start_row]:
                 line_depths[start_row] = current_depth
             
-            # Record depth for lines covered by children
+            # Special handling for switch statements
+            if node.type == "switch_statement":
+                # The switch body (compound_statement) children get processed normally
+                # but we need to handle case/default statements specially
+                for child in node.children:
+                    if child.type == "compound_statement":
+                        # Process the compound statement at current depth
+                        traverse(child, current_depth)
+                        # Now handle case/default statements inside
+                        for case_child in child.children:
+                            if case_child.type in ["case_statement", "default_statement"]:
+                                # Case label at switch body depth + 1
+                                case_depth = current_depth + 1
+                                
+                                # Find the colon and statements after it
+                                colon_found = False
+                                for stmt_child in case_child.children:
+                                    if stmt_child.type == ":":
+                                        colon_found = True
+                                        # Colon line stays at case_depth
+                                        line_depths[stmt_child.start_point[0]] = case_depth
+                                    elif colon_found and stmt_child.type not in ["case", "default", "{", "}"]:
+                                        # Statements after colon are indented one more level
+                                        stmt_depth = case_depth + 1
+                                        for row in range(stmt_child.start_point[0], stmt_child.end_point[0] + 1):
+                                            if row not in line_depths or stmt_depth > line_depths[row]:
+                                                line_depths[row] = stmt_depth
+                    else:
+                        traverse(child, current_depth)
+                return  # Don't process children again below
+            
+            # Handle case/default statements when not inside switch context
+            # (This is a fallback - normally caught by switch handling above)
+            if node.type in ["case_statement", "default_statement"]:
+                # Find colon and indent statements after it
+                colon_idx = None
+                for i, child in enumerate(node.children):
+                    if child.type == ":":
+                        colon_idx = i
+                        break
+                
+                if colon_idx is not None:
+                    # Case label itself at current depth
+                    line_depths[start_row] = current_depth
+                    
+                    # Statements after colon at current_depth + 1
+                    for child in node.children[colon_idx + 1:]:
+                        if child.type not in [":", "case", "default"]:
+                            for row in range(child.start_point[0], child.end_point[0] + 1):
+                                line_depths[row] = current_depth + 1
+                return  # Don't process children normally
+            
+            # Normal indentation logic for other nodes
             new_depth = current_depth + 1 if is_indenter else current_depth
             
             for child in node.children:

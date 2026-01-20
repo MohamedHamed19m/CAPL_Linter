@@ -32,7 +32,6 @@ class BraceStyleRule(ASTRule):
                         line_text = context.lines[row]
                         if line_text[:open_brace.start_point[1]].strip() == "":
                             prev_line = context.lines[row - 1].rstrip()
-                            # Use char index for character-based engine
                             line_starts = [0]
                             for i in range(len(context.lines)-1):
                                 line_starts.append(line_starts[i] + len(context.lines[i]))
@@ -49,7 +48,7 @@ class BraceStyleRule(ASTRule):
         return transformations
 
 class SpacingRule(ASTRule):
-    """AST-based spacing rule for operators, keywords, and cleanup."""
+    """AST-based spacing rule for operators, keywords, parentheses cleanup."""
     
     def __init__(self, config: FormatterConfig):
         self.config = config
@@ -68,12 +67,14 @@ class SpacingRule(ASTRule):
                 transformations.append(Transformation(node_a.end_byte, node_a.end_byte, " "))
 
         def traverse(node):
+            # Binary operators
             if node.type == "binary_expression" and len(node.children) >= 3:
                 left, op, right = node.children[0], node.children[1], node.children[2]
                 if op.type not in [".", "->"]:
                     add_space(left, op)
                     add_space(op, right)
 
+            # Assignment operators
             if node.type in ["assignment_expression", "init_declarator"]:
                 eq = None
                 for child in node.children:
@@ -83,21 +84,25 @@ class SpacingRule(ASTRule):
                     if idx > 0: add_space(node.children[idx-1], eq)
                     if idx < len(node.children) - 1: add_space(eq, node.children[idx+1])
 
+            # Keywords before parentheses
             if node.type in ["if_statement", "for_statement", "while_statement", "switch_statement"]:
                 keyword = node.children[0]
                 if len(node.children) > 1:
                     add_space(keyword, node.children[1])
 
+            # Space before opening brace
             if node.type == "{":
                 if node.start_byte > 0:
                     char_before = context.source[node.start_byte - 1]
                     if char_before not in [" ", "\t", "(", "{", "\n"]:
                         transformations.append(Transformation(node.start_byte, node.start_byte, " "))
 
+            # Space before else
             if node.type == "else":
                 if node.start_byte > 0 and context.source[node.start_byte-1] == "}":
                     transformations.append(Transformation(node.start_byte, node.start_byte, " "))
 
+            # Comma/semicolon spacing
             if node.type in [".", ",", ";"]:
                 parent = node.parent
                 if parent:
@@ -113,6 +118,7 @@ class SpacingRule(ASTRule):
 
         traverse(context.tree.root_node)
         
+        # Text-based cleanup pass
         line_starts = [0]
         for i in range(len(context.lines)-1):
             line_starts.append(line_starts[i] + len(context.lines[i]))
@@ -122,9 +128,27 @@ class SpacingRule(ASTRule):
             if not stripped: continue
             indent_len = len(line) - len(stripped)
             
+            # Remove spaces around dot operator
             new_s = re.sub(r'\s*\.\s*', '.', stripped)
+            
+            # Remove spaces before ++ and --
             new_s = re.sub(r'(\w+)\s*(\+\+|--)', r'\1\2', new_s)
+            
+            # Collapse multiple spaces to single space
             new_s = re.sub(r'[ \t]{2,}', ' ', new_s)
+            
+            # FIX: Remove extra spaces inside empty/sparse parentheses
+            # Match: ( followed by spaces followed by )
+            new_s = re.sub(r'\(\s+\)', '()', new_s)
+            
+            # FIX: Normalize spacing in function declarations
+            # Pattern: word/identifier followed by ( with optional spaces
+            # Replace with: identifier(
+            new_s = re.sub(r'(\w+)\s*\(\s*\)', r'\1()', new_s)
+            
+            # FIX: Remove spaces after ( and before )
+            new_s = re.sub(r'\(\s+', '(', new_s)
+            new_s = re.sub(r'\s+\)', ')', new_s)
             
             if new_s != stripped.rstrip('\n\r'):
                 transformations.append(Transformation(
