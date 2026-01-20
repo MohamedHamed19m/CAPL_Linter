@@ -9,12 +9,31 @@
 
 ## 🚀 Features
 
+- **Code Formatting**: Professional AST-based formatting (Ruff/Black style) for CAPL files.
 - **Auto-Fix System**: Automatically resolves common linting issues with rule-specific fix logic.
 - **Dependency Analysis**: Track `#include` relationships and build transitive visibility graphs.
 - **Symbol Extraction**: Extract functions, parameters, event handlers, and enum members.
 - **Cross-Reference System**: Find all references to any symbol across your codebase.
 - **Static Analysis / Linter**: Detect common issues and enforce coding standards across multiple files.
 - **Configuration Support**: Customize behavior via `.capl-lint.toml`.
+
+## 💅 Formatting (New!)
+
+The `drift format` command provides highly stable, idempotent formatting for CAPL:
+
+- **AST-Based**: Uses `tree-sitter-c` for precision structure detection.
+- **K&R Braces**: Enforces opening braces on the same line.
+- **Intelligent Spacing**: Standardizes operators, keywords, and punctuation.
+- **Precision Indentation**: Direct calculation of nesting depth from the AST.
+- **Vertical Cleanup**: Removes redundant blank lines and ensures consistent block spacing.
+
+```bash
+# Format a file in-place
+uv run drift format MyNode.can
+
+# Check for formatting issues without modifying
+uv run drift format --check MyNode.can
+```
 
 ## 📋 What Can It Detect?
 
@@ -64,13 +83,15 @@ The project is organized into a modular monorepo structure:
 - **`packages/capl-tree-sitter`**: Core CAPL parsing using tree-sitter.
 - **`packages/capl-symbol-db`**: Symbol extraction and persistent storage (SQLite).
 - **`packages/capl-linter`**: Analysis engine and auto-fix logic.
+- **`packages/capl-formatter`**: AST-based code formatter.
 
 ```
 capl-analyzer/
 ├── packages/
 │   ├── capl-tree-sitter/
 │   ├── capl-symbol-db/
-│   └── capl-linter/
+│   ├── capl-linter/
+│   └── capl-formatter/
 ├── src/
 │   └── capl_cli/          # CLI source
 ├── examples/

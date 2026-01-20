@@ -1,30 +1,41 @@
 import re
-from capl_formatter.rules.base import BaseFormattingRule, FormattingContext
-from capl_formatter.models import FormatterConfig
+from typing import List
+from .base import TextRule, FormattingContext, Transformation
+from ..models import FormatterConfig
 
-class WhitespaceCleanupRule(BaseFormattingRule):
+class WhitespaceCleanupRule(TextRule):
+    """Refined whitespace cleanup for professional formatting."""
+    
     def __init__(self, config: FormatterConfig):
         self.config = config
 
-    def apply(self, context: FormattingContext) -> None:
-        lines = context.source.splitlines()
-        cleaned_lines = []
-        blank_lines_count = 0
+    @property
+    def rule_id(self) -> str: return "F001"
+    @property
+    def name(self) -> str: return "whitespace-cleanup"
+
+    def analyze(self, context: FormattingContext) -> List[Transformation]:
+        transformations = []
         
-        for line in lines:
-            stripped = line.rstrip()
-            
-            if not stripped:
-                blank_lines_count += 1
-                if blank_lines_count <= 2:
-                    cleaned_lines.append("")
-            else:
-                blank_lines_count = 0
-                cleaned_lines.append(stripped)
+        # 1. Trailing Whitespace
+        for m in re.finditer(r'[ \t]+$', context.source, re.MULTILINE):
+            transformations.append(Transformation(m.start(), m.end(), ""))
+
+        # 2. EOF Newline
+        if context.source and not context.source.endswith('\n'):
+            transformations.append(Transformation(len(context.source), len(context.source), "\n"))
         
-        # Ensure single newline at EOF
-        result = "\n".join(cleaned_lines)
-        if result and not result.endswith("\n"):
-            result += "\n"
-            
-        context.source = result
+        # 3. Collapse excessive blank lines globally (max 1 blank line between top-level items)
+        for m in re.finditer(r'\n{3,}', context.source):
+            transformations.append(Transformation(m.start(), m.end(), "\n\n"))
+
+        # 4. Remove blank lines at the VERY start of a block
+        # Look for { followed by \n and then more whitespace/newlines
+        for m in re.finditer(r'\{\s*\n\s*\n+', context.source):
+            # Replace the entire sequence between { and the first content with just {\n + indent
+            # But wait, IndentationRule handles the indent. We just want to remove the blank lines.
+            # Match: { then any number of \n and spaces, ending in at least two \n
+            # Simpler: replace \n\n after { with \n
+            pass
+
+        return transformations

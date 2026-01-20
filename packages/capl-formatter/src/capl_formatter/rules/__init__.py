@@ -1,30 +1,31 @@
-from .base import BaseFormattingRule, FormattingContext
-from .indentation import IndentationRule
+from .base import FormattingRule, ASTRule, TextRule, FormattingContext, Transformation
 from .whitespace import WhitespaceCleanupRule
+from .indentation import IndentationRule
 from .spacing import SpacingRule, BraceStyleRule
-from .quotes import QuoteNormalizationRule
-from .blank_lines import BlankLineRule
 from .block_expansion import BlockExpansionRule
-from .pragmas import PragmaHandlingRule
-from .comments import CommentReflowRule
+from .splitting import StatementSplitRule
+from .switch import SwitchNormalizationRule
 from .structure import IncludeSortingRule, VariableOrderingRule
-from .wrapping import DefinitionWrappingRule, CallWrappingRule, InitializerWrappingRule
+from .comments import CommentReflowRule
+from .wrapping import IntelligentWrappingRule
+from .quotes import QuoteNormalizationRule
 
 __all__ = [
-    "BaseFormattingRule", 
-    "FormattingContext", 
-    "IndentationRule", 
+    "FormattingRule",
+    "ASTRule",
+    "TextRule",
+    "FormattingContext",
+    "Transformation",
     "WhitespaceCleanupRule",
+    "IndentationRule",
     "SpacingRule",
     "BraceStyleRule",
-    "QuoteNormalizationRule",
-    "BlankLineRule",
     "BlockExpansionRule",
-    "PragmaHandlingRule",
-    "CommentReflowRule",
+    "StatementSplitRule",
+    "SwitchNormalizationRule",
     "IncludeSortingRule",
     "VariableOrderingRule",
-    "DefinitionWrappingRule",
-    "CallWrappingRule",
-    "InitializerWrappingRule"
+    "CommentReflowRule",
+    "IntelligentWrappingRule",
+    "QuoteNormalizationRule"
 ]

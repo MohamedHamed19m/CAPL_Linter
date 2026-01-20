@@ -1,57 +1,48 @@
 import re
 import textwrap
-from capl_formatter.rules.base import BaseFormattingRule, FormattingContext
-from capl_formatter.models import FormatterConfig
+from typing import List
+from .base import TextRule, FormattingContext, Transformation
+from ..models import FormatterConfig
 
-class CommentReflowRule(BaseFormattingRule):
-    def __init__(self, config: FormatterConfig):
-        self.config = config
+class CommentReflowRule(TextRule):
+    """Reflows comments to stay within line length."""
+    def __init__(self, config: FormatterConfig): self.config = config
+    @property
+    def rule_id(self) -> str: return "F012"
+    @property
+    def name(self) -> str: return "comment-reflow"
 
-    def apply(self, context: FormattingContext) -> None:
-        # Pattern from utils.py (duplicated)
+    def analyze(self, context: FormattingContext) -> List[Transformation]:
+        transformations = []
+        # Pattern for comments and strings
         pattern = r'''(\/\/.*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')'''
         
-        parts = re.split(pattern, context.source)
-        
-        for i, part in enumerate(parts):
-            if part.startswith("//"):
-                parts[i] = self._reflow_line_comment(part)
-            elif part.startswith("/*"):
-                parts[i] = self._reflow_block_comment(part)
-                
-        context.source = "".join(parts)
-
-    def _reflow_line_comment(self, comment: str) -> str:
-        if len(comment) <= self.config.line_length:
-            return comment
-            
-        content = comment[2:].strip()
-        wrapped = textwrap.wrap(content, width=self.config.line_length - 3)
-        return "// " + "\n// ".join(wrapped)
-
-    def _reflow_block_comment(self, comment: str) -> str:
-        if re.match(r'\/\*[*=]{2,}', comment):
-            return comment
-            
-        lines = comment.splitlines()
-        cleaned_lines = []
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith("/*"): stripped = stripped[2:]
-            if stripped.endswith("*/"): stripped = stripped[:-2]
-            if stripped.startswith("*"): stripped = stripped[1:]
-            cleaned_lines.append(stripped.strip())
-            
-        content = " ".join(cleaned_lines).strip()
-        
-        if not content:
-            return comment
-            
-        wrapped = textwrap.wrap(content, width=self.config.line_length - 3)
-        
-        result = "/*\n"
-        for line in wrapped:
-            result += " * " + line + "\n"
-        result += " */"
-        
-        return result
+        for m in re.finditer(pattern, context.source):
+            comment = m.group(0)
+            if comment.startswith("//"):
+                if len(comment) > self.config.line_length:
+                    # Simple line wrap
+                    content = comment[2:].strip()
+                    wrapped = textwrap.wrap(content, width=self.config.line_length - 3)
+                    new_comment = "// " + "\n// ".join(wrapped)
+                    transformations.append(Transformation(m.start(), m.end(), new_comment))
+            elif comment.startswith("/*"):
+                # ASCII Art Check
+                if not re.match(r'/\*[*=]{2,}', comment):
+                    if len(comment) > self.config.line_length or "\n" in comment:
+                        # Reflow block
+                        lines = comment.splitlines()
+                        content_lines = []
+                        for line in lines:
+                            s = line.strip()
+                            if s.startswith("/*"): s = s[2:]
+                            if s.endswith("*/"): s = s[:-2]
+                            if s.startswith("*"): s = s[1:]
+                            content_lines.append(s.strip())
+                        
+                        content = " ".join(content_lines).strip()
+                        if content:
+                            wrapped = textwrap.wrap(content, width=self.config.line_length - 3)
+                            new_comment = "/*\n" + "\n".join([f" * {l}" for l in wrapped]) + "\n */"
+                            transformations.append(Transformation(m.start(), m.end(), new_comment))
+        return transformations

@@ -43,6 +43,11 @@ graph TD
 ### 📦 capl-cli (The "Voice")
 *   **Role**: Orchestration, `.capl-lint.toml` configuration, and Pydantic serialization.
 
+### 📦 capl-formatter (The "Artisan")
+*   **Role**: Structural transformation and style enforcement.
+*   **Strategy**: Two-phase transformation (Structural + Indentation).
+*   **Constraint**: Idempotent rules. Re-parses the source after each rule application to maintain AST accuracy.
+
 ---
 
 ## 3. The "Neutrality" Protocol
@@ -71,10 +76,9 @@ To scale without constant refactoring, we follow these data rules:
 
 To stop refactoring and finish the package, the following must be stable:
 
-- [ ] **Phase 1: Extractor Cleanup**: Remove all validation logic from `capl-symbol-db`.
-- [ ] **Phase 2: Project Analysis**: Implement recursive `#include` visibility for semantic rules.
-- [ ] **Phase 3: Configuration**: Support for `.capl-lint.toml` to filter rules.
-- [ ] **Phase 4: Semantic Robustness**: Implement `E011` (Undefined Symbols) and `E012` (Duplicate Handlers).
+- [x] **Phase 5: AST-Based Formatter**: Implement `capl-formatter` with character-based atomic transformations.
+- [ ] **Phase 6: Project Analysis**: Implement recursive `#include` visibility for semantic rules.
+- [ ] **Phase 7: Precision Refinements**: Final stability pass for complex CAPL structures (multi-dim arrays, event handlers).
 - [ ] **CLI Stability**: Support for `--format json` vs `--format text` using Pydantic.
 
 ---

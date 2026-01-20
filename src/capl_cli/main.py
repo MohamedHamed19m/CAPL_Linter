@@ -14,18 +14,18 @@ from .converters import internal_issue_to_lint_issue
 from capl_formatter.engine import FormatterEngine
 from capl_formatter.models import FormatterConfig
 from capl_formatter.rules import (
-    QuoteNormalizationRule,
-    BlockExpansionRule,
-    BraceStyleRule,
-    SpacingRule,
+    WhitespaceCleanupRule,
     IndentationRule,
-    BlankLineRule,
+    SpacingRule,
+    BraceStyleRule,
+    BlockExpansionRule,
+    StatementSplitRule,
+    SwitchNormalizationRule,
     IncludeSortingRule,
     VariableOrderingRule,
-    DefinitionWrappingRule,
-    CallWrappingRule,
-    InitializerWrappingRule,
-    WhitespaceCleanupRule
+    CommentReflowRule,
+    IntelligentWrappingRule,
+    QuoteNormalizationRule
 )
 
 app = typer.Typer(help="CAPL Static Analyzer - Analyze CAPL code for issues and dependencies")
@@ -161,15 +161,16 @@ def format(
     
     # Recommended Rule Order
     engine.add_rule(QuoteNormalizationRule(config))
+    engine.add_rule(IncludeSortingRule(config))
+    engine.add_rule(VariableOrderingRule(config))
+    engine.add_rule(CommentReflowRule(config))
+    engine.add_rule(IntelligentWrappingRule(config))
     engine.add_rule(BlockExpansionRule(config))
+    engine.add_rule(StatementSplitRule(config))
+    engine.add_rule(SwitchNormalizationRule(config))
     engine.add_rule(BraceStyleRule(config))
     engine.add_rule(SpacingRule(config))
-    engine.add_rule(DefinitionWrappingRule(config))
-    engine.add_rule(CallWrappingRule(config))
-    engine.add_rule(InitializerWrappingRule(config))
     engine.add_rule(IndentationRule(config))
-    engine.add_rule(BlankLineRule(config))
-    engine.add_rule(IncludeSortingRule(config))
     engine.add_rule(WhitespaceCleanupRule(config))
 
     # 3. Process files
