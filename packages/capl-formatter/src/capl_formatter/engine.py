@@ -41,10 +41,7 @@ class FormatterEngine:
                             modified = True
                 if not pass_modified: break
             
-            # Phase 2: Vertical Whitespace Normalization
-            current_source = self._cleanup_vertical_whitespace(current_source)
-            
-            # Phase 3: Final Indentation Pass
+            # Phase 2: Final Indentation Pass (Run BEFORE Cleanup)
             parse_result = self.parser.parse_string(current_source)
             context = FormattingContext(source=current_source, file_path=file_path, tree=parse_result.tree)
             from .rules.indentation import IndentationRule
@@ -53,6 +50,10 @@ class FormatterEngine:
             if indent_transforms:
                 current_source = self._apply_transformations(current_source, indent_transforms)
                 modified = True
+
+            # Phase 3: Vertical Whitespace Normalization (Run LAST)
+            # This ensures we catch blank lines even if they were indented in Phase 2
+            current_source = self._cleanup_vertical_whitespace(current_source)
                     
         except Exception as e:
             import traceback
@@ -61,16 +62,39 @@ class FormatterEngine:
         return FormatResult(source=current_source, modified=modified, errors=errors)
 
     def _cleanup_vertical_whitespace(self, source: str) -> str:
-        """Standardizes blank lines at block boundaries and between items."""
-        # 1. Collapse multiple blank lines to max 1
-        source = re.sub(r'\n{3,}', r'\n\n', source)
-        # 2. Remove blank lines at start of blocks
+        """Aggressively removes excessive blank lines, handling indented blanks."""
+        
+        # 1. Collapse multiple blank lines globally (3+ newlines -> 2)
+        # Handle cases with spaces between newlines: \n[spaces]\n[spaces]\n
+        while re.search(r'\n\s*\n\s*\n', source):
+            source = re.sub(r'\n\s*\n\s*\n', r'\n\n', source)
+        
+        # 2. Block boundary cleanup
+        # After {: allow for spaces between \n and next content
         source = re.sub(r'\{\s*\n\s*\n+', r'{\n', source)
-        # 3. Remove blank lines at end of blocks
+        # Before }:
         source = re.sub(r'\n\s*\n+\s*\}', r'\n}', source)
-        # 4. Remove blank lines after case/default labels
-        source = re.sub(r':\s*\n\s*\n+', r':\n', source)
-        return source
+        
+        # 3. Label cleanup
+        source = re.sub(r'(case\s+[^:]+:|default\s*):\s*\n\s*\n+', r'\1:\n', source)
+        
+        # 4. Line-by-line "Artisan" cleanup
+        lines = source.split('\n')
+        cleaned = []
+        i = 0
+        while i < len(lines):
+            cleaned.append(lines[i])
+            if i < len(lines) - 2:
+                curr = lines[i].strip()
+                next_l = lines[i+1].strip()
+                after = lines[i+2].strip()
+                
+                # If current ends with ;, ,, :, or {, next is blank (or just whitespace), and after is content
+                if (curr.endswith((';', ',', ':', '{')) and not next_l and after):
+                    i += 1
+            i += 1
+        
+        return '\n'.join(cleaned)
 
     def _apply_transformations(self, source: str, transforms: List[Transformation]) -> str:
         """Applies non-overlapping character-based transformations in a single pass."""

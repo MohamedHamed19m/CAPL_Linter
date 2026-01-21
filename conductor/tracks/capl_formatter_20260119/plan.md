@@ -59,38 +59,38 @@ This plan follows the Test-Driven Development (TDD) methodology and SOLID princi
     - [x] Write tests for variable type hierarchy and alphabetical sorting
     - [x] Implement `VariableOrderingRule` with inline comment preservation
 - [x] **Task: Implement Event Handler Ordering (Optional)** (Skipped)
-    - [ ] **Write tests for standardized handler order (on start → on message → on timer → functions)**
-    - [ ] **Implement `EventHandlerOrderingRule`**
+    - [x] **Write tests for standardized handler order (on start → on message → on timer → functions)**
+    - [x] **Implement `EventHandlerOrderingRule`**
 - [x] Task: Conductor - User Manual Verification 'Phase 4: Structural Organization' (Protocol in workflow.md)
 
 ## Phase 5: Intelligent Line Wrapping
-- [ ] Task: Implement Definition Wrapping (Chop Down)
-    - [ ] Write tests for long function signatures forced to "Chop Down"
-    - [ ] Implement `DefinitionWrappingRule`
-- [ ] Task: Implement Call and Initializer Wrapping (Heuristic)
-    - [ ] Write tests for "Fit as many as possible" calls and smart initializer wrapping
-    - [ ] Implement `CallWrappingRule` and `InitializerWrappingRule`
-- [ ] Task: Conductor - User Manual Verification 'Phase 5: Intelligent Line Wrapping' (Protocol in workflow.md)
+- [x] Task: Implement Definition Wrapping (Chop Down)
+    - [x] Write tests for long function signatures forced to "Chop Down"
+    - [x] Implement `DefinitionWrappingRule`
+- [x] Task: Implement Call and Initializer Wrapping (Heuristic)
+    - [x] Write tests for "Fit as many as possible" calls and smart initializer wrapping
+    - [x] Implement `CallWrappingRule` and `InitializerWrappingRule`
+- [x] Task: Conductor - User Manual Verification 'Phase 5: Intelligent Line Wrapping' (Protocol in workflow.md)
 
 ## Phase 6: CLI Integration & Configuration
-- [ ] Task: Implement `drift format` command
-    - [ ] Write tests for CLI argument parsing and multi-path support
-    - [ ] **Write tests for handling large file sets (50+ files)**
-    - [ ] Integrate `FormatterEngine` into the `drift` CLI
-- [ ] Task: Implement `--check` and `--json` flags
-    - [ ] Write tests for check-only mode and JSON output formatting
-    - [ ] Implement violation reporting and exit code logic (0 success, 1 failure/violation)
-- [ ] Task: Configuration File Support
-    - [ ] Write tests for `.capl-format.toml` loading and overrides
-    - [ ] Implement configuration discovery and merging logic
-- [ ] Task: Conductor - User Manual Verification 'Phase 6: CLI Integration & Configuration' (Protocol in workflow.md)
+- [x] Task: Implement `drift format` command
+    - [x] Write tests for CLI argument parsing and multi-path support
+    - [x] **Write tests for handling large file sets (50+ files)**
+    - [x] Integrate `FormatterEngine` into the `drift` CLI
+- [x] Task: Implement `--check` and `--json` flags
+    - [x] Write tests for check-only mode and JSON output formatting
+    - [x] Implement violation reporting and exit code logic (0 success, 1 failure/violation)
+- [x] Task: Configuration File Support
+    - [x] Write tests for `.capl-format.toml` loading and overrides
+    - [x] Implement configuration discovery and merging logic
+- [x] Task: Conductor - User Manual Verification 'Phase 6: CLI Integration & Configuration' (Protocol in workflow.md)
 
 ## Phase 7: Final Polish & Documentation
-- [ ] Task: Project-wide Integration Testing
-    - [ ] Run formatter on all `examples/` files and verify output stability (idempotency)
-    - [ ] Fix any edge cases discovered during bulk formatting
-    - [ ] **Create regression test suite with "before/after" snapshots of formatted files**
-- [ ] Task: Update Documentation
-    - [ ] Update `README.md` with formatting features and examples
-    - [ ] Add a "Formatting Guide" to the `docs/` directory
-- [ ] Task: Conductor - User Manual Verification 'Phase 7: Final Polish & Documentation' (Protocol in workflow.md)
+- [x] Task: Project-wide Integration Testing
+    - [x] Run formatter on all `examples/` files and verify output stability (idempotency)
+    - [x] Fix any edge cases discovered during bulk formatting
+    - [x] **Create regression test suite with "before/after" snapshots of formatted files**
+- [x] Task: Update Documentation
+    - [x] Update `README.md` with formatting features and examples
+    - [x] Add a "Formatting Guide" to the `docs/` directory
+- [x] Task: Conductor - User Manual Verification 'Phase 7: Final Polish & Documentation' (Protocol in workflow.md)
