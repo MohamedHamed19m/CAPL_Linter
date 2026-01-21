@@ -19,13 +19,16 @@ class FormatterEngine:
     def format_string(self, source: str, file_path: str = "") -> FormatResult:
         """Formats a CAPL string through iterative structural passes and final indentation."""
         source = source.replace('\r\n', '\n')
+        
+        # Pre-process: Normalize top-level indentation to 0
+        source = self._normalize_top_level_indentation(source)
+        
         current_source = source
         modified = False
         errors = []
 
         try:
             # Phase 1: Structural Convergence
-            # We re-parse after each rule to ensure subsequent rules work on a valid AST.
             max_passes = 2
             for i in range(max_passes):
                 pass_modified = False
@@ -41,7 +44,10 @@ class FormatterEngine:
                             modified = True
                 if not pass_modified: break
             
-            # Phase 2: Final Indentation Pass (Run BEFORE Cleanup)
+            # Phase 2: Vertical Whitespace Normalization (Run BEFORE Indentation)
+            current_source = self._cleanup_vertical_whitespace(current_source)
+            
+            # Phase 3: Final Indentation Pass
             parse_result = self.parser.parse_string(current_source)
             context = FormattingContext(source=current_source, file_path=file_path, tree=parse_result.tree)
             from .rules.indentation import IndentationRule
@@ -50,10 +56,6 @@ class FormatterEngine:
             if indent_transforms:
                 current_source = self._apply_transformations(current_source, indent_transforms)
                 modified = True
-
-            # Phase 3: Vertical Whitespace Normalization (Run LAST)
-            # This ensures we catch blank lines even if they were indented in Phase 2
-            current_source = self._cleanup_vertical_whitespace(current_source)
                     
         except Exception as e:
             import traceback
@@ -61,40 +63,66 @@ class FormatterEngine:
 
         return FormatResult(source=current_source, modified=modified, errors=errors)
 
-    def _cleanup_vertical_whitespace(self, source: str) -> str:
-        """Aggressively removes excessive blank lines, handling indented blanks."""
-        
-        # 1. Collapse multiple blank lines globally (3+ newlines -> 2)
-        # Handle cases with spaces between newlines: \n[spaces]\n[spaces]\n
-        while re.search(r'\n\s*\n\s*\n', source):
-            source = re.sub(r'\n\s*\n\s*\n', r'\n\n', source)
-        
-        # 2. Block boundary cleanup
-        # After {: allow for spaces between \n and next content
-        source = re.sub(r'\{\s*\n\s*\n+', r'{\n', source)
-        # Before }:
-        source = re.sub(r'\n\s*\n+\s*\}', r'\n}', source)
-        
-        # 3. Label cleanup
-        source = re.sub(r'(case\s+[^:]+:|default\s*):\s*\n\s*\n+', r'\1:\n', source)
-        
-        # 4. Line-by-line "Artisan" cleanup
-        lines = source.split('\n')
-        cleaned = []
-        i = 0
-        while i < len(lines):
-            cleaned.append(lines[i])
-            if i < len(lines) - 2:
-                curr = lines[i].strip()
-                next_l = lines[i+1].strip()
-                after = lines[i+2].strip()
+    def _normalize_top_level_indentation(self, source: str) -> str:
+        """Ensure all top-level declarations start at column 0."""
+        try:
+            parse_result = self.parser.parse_string(source)
+            if not parse_result.tree or not parse_result.tree.root_node:
+                return source
+
+            lines = source.splitlines(keepends=True)
+            top_level_lines = set()
+
+            # Find all direct children of translation_unit (top-level nodes)
+            for child in parse_result.tree.root_node.children:
+                if child.type in ('comment', 'line_comment', 'block_comment', 'ERROR'):
+                    continue
                 
-                # If current ends with ;, ,, :, or {, next is blank (or just whitespace), and after is content
-                if (curr.endswith((';', ',', ':', '{')) and not next_l and after):
-                    i += 1
-            i += 1
+                top_level_lines.add(child.start_point[0])
+
+            # Rebuild source with normalized indentation
+            normalized = []
+            for i, line in enumerate(lines):
+                if i in top_level_lines and line.strip():
+                    normalized.append(line.lstrip())
+                else:
+                    normalized.append(line)
+
+            return ''.join(normalized)
         
-        return '\n'.join(cleaned)
+        except Exception:
+            return source
+
+    def _cleanup_vertical_whitespace(self, source: str) -> str:
+        """Aggressively removes excessive blank lines BEFORE indentation."""
+        
+        # STEP 0: Normalize indented blank lines to truly empty
+        lines = source.split('\n')
+        normalized = [line if line.strip() else '' for line in lines]
+        source = '\n'.join(normalized)
+        
+        # PASS 1: Collapse multiple blank lines globally
+        while '\n\n\n' in source:
+            source = source.replace('\n\n\n', '\n\n')
+        
+        # PASS 2: Remove blank lines at block boundaries
+        # After {
+        source = re.sub(r'\{\n\n+', r'{\n', source)
+        
+        # Before closing braces (handles indented/trailing cases)
+        source = re.sub(r'\n\s*\n(\s*[}\]])', r'\n\1', source)
+        
+        # PASS 3: Remove blank lines after case/default labels
+        source = re.sub(r'(case\s+[^:]+:)\n\n+', r'\1\n', source)
+        source = re.sub(r'(default\s*:)\n\n+', r'\1\n', source)
+        
+        # PASS 4: Remove blank lines after commas (ENUM FIX)
+        source = re.sub(r',\n\n+', r',\n', source)
+        
+        # PASS 5: Remove blank lines after semicolons in blocks
+        source = re.sub(r';\n\n+', r';\n', source)
+        
+        return source
 
     def _apply_transformations(self, source: str, transforms: List[Transformation]) -> str:
         """Applies non-overlapping character-based transformations in a single pass."""

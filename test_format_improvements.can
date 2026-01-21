@@ -12,15 +12,15 @@ void test_switch(){
       break;
     default:
       x=3;
-}
+  }
 }
 
 // Test 2: Struct formatting (single-line to multi-line)
 
-  struct Point{
+struct Point{
     int x;
     int y;
-}
+  }
 
 struct Complex{
   int a;
@@ -31,11 +31,11 @@ struct Complex{
 
 // Test 3: Enum formatting (single-line to multi-line)
 
-  enum Color{
+enum Color{
     RED,
     GREEN,
     BLUE
-}
+  }
 
 enum Status{
   IDLE, RUNNING, STOPPED, ERROR
@@ -58,15 +58,15 @@ void mixed_spacing(int x , int y){
 // Combined test: all issues together
 
 variables {
-    struct Data{
+  struct Data{
       int id;
       char name[20];
       float value;
-}
+    }
 
   enum State{
     INIT, READY, DONE
-}
+  }
 }
 
 void complex_test(int param){
@@ -79,6 +79,6 @@ void complex_test(int param){
       break;
     default:
       cleanup();
-}
+  }
 }
 

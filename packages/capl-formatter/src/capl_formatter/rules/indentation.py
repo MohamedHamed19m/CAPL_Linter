@@ -20,8 +20,10 @@ class IndentationRule(ASTRule):
         indent_size = self.config.indent_size
         line_depths: Dict[int, int] = {}
         
+        # Initialize with a value indicating "unset" (e.g., -1)
+        # We want to find the MINIMUM depth for each line.
         for i in range(len(context.lines)):
-            line_depths[i] = 0
+            line_depths[i] = -1
 
         def traverse(node, current_depth):
             start_row = node.start_point[0]
@@ -33,7 +35,8 @@ class IndentationRule(ASTRule):
             ]
             
             # Record depth for the node's start line
-            if start_row not in line_depths or current_depth > line_depths[start_row]:
+            # We want the shallowest node that starts on this line to dictate indentation
+            if line_depths[start_row] == -1 or current_depth < line_depths[start_row]:
                 line_depths[start_row] = current_depth
             
             # Special handling for switch statements
@@ -56,19 +59,19 @@ class IndentationRule(ASTRule):
                                     if stmt_child.type == ":":
                                         colon_found = True
                                         # Colon line stays at case_depth
-                                        line_depths[stmt_child.start_point[0]] = case_depth
+                                        if line_depths[stmt_child.start_point[0]] == -1 or case_depth < line_depths[stmt_child.start_point[0]]:
+                                            line_depths[stmt_child.start_point[0]] = case_depth
                                     elif colon_found and stmt_child.type not in ["case", "default", "{", "}"]:
                                         # Statements after colon are indented one more level
                                         stmt_depth = case_depth + 1
                                         for row in range(stmt_child.start_point[0], stmt_child.end_point[0] + 1):
-                                            if row not in line_depths or stmt_depth > line_depths[row]:
+                                            if line_depths[row] == -1 or stmt_depth < line_depths[row]:
                                                 line_depths[row] = stmt_depth
                     else:
                         traverse(child, current_depth)
                 return  # Don't process children again below
             
             # Handle case/default statements when not inside switch context
-            # (This is a fallback - normally caught by switch handling above)
             if node.type in ["case_statement", "default_statement"]:
                 # Find colon and indent statements after it
                 colon_idx = None
@@ -79,13 +82,15 @@ class IndentationRule(ASTRule):
                 
                 if colon_idx is not None:
                     # Case label itself at current depth
-                    line_depths[start_row] = current_depth
+                    if line_depths[start_row] == -1 or current_depth < line_depths[start_row]:
+                        line_depths[start_row] = current_depth
                     
                     # Statements after colon at current_depth + 1
                     for child in node.children[colon_idx + 1:]:
                         if child.type not in [":", "case", "default"]:
                             for row in range(child.start_point[0], child.end_point[0] + 1):
-                                line_depths[row] = current_depth + 1
+                                if line_depths[row] == -1 or (current_depth + 1) < line_depths[row]:
+                                    line_depths[row] = current_depth + 1
                 return  # Don't process children normally
             
             # Normal indentation logic for other nodes
@@ -102,7 +107,8 @@ class IndentationRule(ASTRule):
             if is_indenter:
                 for child in node.children:
                     if child.type == "}":
-                        line_depths[child.start_point[0]] = current_depth
+                        if line_depths[child.start_point[0]] == -1 or current_depth < line_depths[child.start_point[0]]:
+                            line_depths[child.start_point[0]] = current_depth
 
         traverse(context.tree.root_node, 0)
         
@@ -112,7 +118,8 @@ class IndentationRule(ASTRule):
 
         for i, line in enumerate(context.lines):
             if not line.strip(): continue
-            depth = line_depths.get(i, 0)
+            # If line_depths[i] is still -1, default to 0 (or keep existing? 0 is safer)
+            depth = max(0, line_depths.get(i, 0))
             target_indent = " " * (depth * indent_size)
             match = re.match(r'^([ \t]*)', line)
             current_ws = match.group(1) if match else ""
