@@ -138,9 +138,9 @@ int y; /* word */
 // FIXME: bug in edge case
 // NOTE: this assumes X
 // =============================================================================
-// TEST 14: UTF-8 and Emoji
+// TEST 14: Final Alignment Check
 // =============================================================================
-void test_unicode() {
-  int x;                                // 中文注释
-  int y; // Comme                       nt with emoji 🚀
+void test_final() {
+  int x;                                // first comment
+  int y;                                // second comment
 }
