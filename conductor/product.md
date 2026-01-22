@@ -11,3 +11,4 @@ The primary goal of the CAPL Analyzer is **Comprehensive CAPL Code Quality Assur
 This encompasses providing a complete code quality solution for CAPL projects, which includes:
 *   **Static Analysis & Linting:** Detecting errors, warnings, and style violations before compilation.
 *   **Automated Code Fixing:** Resolving common issues automatically, such as `extern` keyword removal, correct variable placement, and enforcing explicit type keywords for enums and structs.
+*   **Opinionated Code Formatting:** Ensuring consistent code style through AST-aware formatting, including intelligent comment handling, indentation, and spacing.
