@@ -26,14 +26,18 @@ To achieve "Ruff/Black" level quality, the engine executes formatting in a speci
 *   **`F003: BraceStyleRule`** (`rules/structure.py`): Enforces K&R brace style (opening brace on same line).
 *   **`F004: SpacingRule`** (`rules/spacing.py`): Normalizes spaces around operators, keywords, and parentheses.
 *   **`F005: BlockExpansionRule`** (`rules/block_expansion.py`): Expands single-line blocks, structs, and enums into multi-line.
-*   **`F006: StatementSplitRule`** (`rules/splitting.py`): Splits consecutive statements on the same line (skips structs/enums).
+*   **`F006: StatementSplitRule`** (`rules/splitting.py`): Splits consecutive statements on the same line (skips structs/enums). Treat comments as statement delimiters.
 *   **`F007: SwitchNormalizationRule`** (`rules/switch.py`): Ensures case labels and bodies are correctly separated.
+*   **`F012: CommentReflowRule`** (`rules/comments.py`): Wraps long comments to fit `line_length`. Excludes Doxygen and ASCII art.
+*   **`F013: CommentAlignmentRule`** (`rules/comments.py`): Vertically aligns consecutive inline comments.
 
 ## Common Anti-patterns to Avoid
 *   **Regex for Structural Changes**: Do not use regex to find where to add braces or split lines; use the AST to find the exact node boundaries.
 *   **Hardcoded Indentation Strings**: Never use `"\t"` or `"    "` directly in rules. Use `context.config.indent_size` or helper methods from `base.py`.
 *   **Overlapping Transformations**: Avoid creating two transformations that touch the same byte range in one rule pass. This causes the engine to fail or produce corrupted text.
 *   **Ignoring `ERROR` Nodes**: If a rule encounters an `ERROR` node in the AST, it should generally bail out or be extremely conservative to avoid corrupting invalid code.
+*   **Manual Comment Alignment**: Do not manually align comments with spaces; the formatter handles vertical alignment automatically.
+*   **Manual Doxygen Wrapping**: Avoid wrapping Doxygen blocks manually as the formatter specifically excludes them to preserve documentation structure.
 
 ## Design Principles & Invariants
 To maintain high quality, every rule and modification must adhere to these invariants:

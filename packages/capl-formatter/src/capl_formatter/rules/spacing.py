@@ -124,9 +124,11 @@ class SpacingRule(ASTRule):
             line_starts.append(line_starts[i] + len(context.lines[i]))
 
         for i, line in enumerate(context.lines):
-            stripped = line.lstrip()
-            if not stripped: continue
-            indent_len = len(line) - len(stripped)
+            stripped_with_nl = line.lstrip()
+            if not stripped_with_nl.strip(): continue
+            
+            indent_len = len(line) - len(stripped_with_nl)
+            stripped = stripped_with_nl.rstrip('\n\r')
             
             # Remove spaces around dot operator
             new_s = re.sub(r'\s*\.\s*', '.', stripped)
@@ -138,19 +140,16 @@ class SpacingRule(ASTRule):
             new_s = re.sub(r'[ \t]{2,}', ' ', new_s)
             
             # FIX: Remove extra spaces inside empty/sparse parentheses
-            # Match: ( followed by spaces followed by )
             new_s = re.sub(r'\(\s+\)', '()', new_s)
             
             # FIX: Normalize spacing in function declarations
-            # Pattern: word/identifier followed by ( with optional spaces
-            # Replace with: identifier(
             new_s = re.sub(r'\(\s+', '(', new_s)
             new_s = re.sub(r'\s+\)', ')', new_s)
             
-            if new_s != stripped.rstrip('\n\r'):
+            if new_s != stripped:
                 transformations.append(Transformation(
                     line_starts[i] + indent_len, 
-                    line_starts[i] + len(line.rstrip('\n\r')),
+                    line_starts[i] + indent_len + len(stripped),
                     new_s
                 ))
 

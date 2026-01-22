@@ -19,6 +19,7 @@ class IndentationRule(ASTRule):
         transformations = []
         indent_size = self.config.indent_size
         line_depths: Dict[int, int] = {}
+        ignored_lines = set()
         
         # Initialize with a value indicating "unset" (e.g., -1)
         # We want to find the MINIMUM depth for each line.
@@ -28,6 +29,12 @@ class IndentationRule(ASTRule):
         def traverse(node, current_depth):
             start_row = node.start_point[0]
             end_row = node.end_point[0]
+            
+            # Skip indentation for lines inside multi-line comments/strings (except start)
+            if node.type in ['comment', 'string_literal']:
+                if end_row > start_row:
+                    for r in range(start_row + 1, end_row + 1):
+                        ignored_lines.add(r)
             
             is_indenter = node.type in [
                 "compound_statement", "variables_block", 
@@ -117,6 +124,7 @@ class IndentationRule(ASTRule):
             line_starts.append(line_starts[i] + len(context.lines[i]))
 
         for i, line in enumerate(context.lines):
+            if i in ignored_lines: continue
             if not line.strip(): continue
             # If line_depths[i] is still -1, default to 0 (or keep existing? 0 is safer)
             depth = max(0, line_depths.get(i, 0))

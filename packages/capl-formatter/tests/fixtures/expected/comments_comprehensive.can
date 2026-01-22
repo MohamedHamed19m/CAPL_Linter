@@ -1,0 +1,18 @@
+// Header
+void test() {
+  int x;                                // short
+  int very_long_variable_name;          // longer
+
+  // This is a very long comment that exceeds the line length limit of 100 characters and should be
+  // wrapped
+  x = 1;
+}
+
+/**
+ * @param x value
+ * This line is very very very very very very very very very very very very very very very very very very long
+ */
+void doxygen() {
+}
+
+//=== Section ===

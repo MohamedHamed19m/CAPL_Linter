@@ -45,9 +45,9 @@ class StatementSplitRule(ASTRule):
                                 if is_stmt and prev_is_end:
                                     # Ensure we don't split } else
                                     if not (prev_child.type == "}" and child.type in ["else", "while"]):
-                                        # Skip spaces before the new statement
+                                        # Skip spaces/newlines before the new statement
                                         pos = child.start_byte - 1
-                                        while pos >= 0 and context.source[pos] in [' ', '\t']:
+                                        while pos >= 0 and context.source[pos] in [' ', '\t', '\n', '\r']:
                                             pos -= 1
                                         transformations.append(Transformation(
                                             start_byte=pos + 1, 
