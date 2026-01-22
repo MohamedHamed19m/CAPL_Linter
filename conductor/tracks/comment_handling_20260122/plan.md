@@ -32,41 +32,41 @@
 - [x] Conductor approval received
 
 ## Phase 2: Comment Attachment & Preservation
-- [ ] Task: Add Debug Utilities (Temporary).
-    - [ ] Create `debug_comment_map.py` to visualize comment attachments.
-- [ ] Task: Implement Comment Attachment Map logic in `engine.py`.
-    - [ ] Implement `_find_all_comments` to extract comment nodes from AST.
-    - [ ] **TEST CHECKPOINT**: Create `test_find_all_comments()` - verify it finds 10 comments in test file
-    - [ ] Implement `_classify_comment` to determine attachment type.
-    - [ ] **TEST CHECKPOINT**: Create `test_classify_comment()` - verify all 5 types detected
-    - [ ] Implement `_build_comment_attachment_map` to link comments to target nodes.
-    - [ ] **TEST CHECKPOINT**: Run `test_header_comment_proximity()` - should pass now
-- [ ] Task: Implement Comment Proximity Preservation in `engine.py`.
-    - [ ] Update `_cleanup_vertical_whitespace` to skip blank lines using attachment map.
-- [ ] Task: Update Structural Rules for Comment Awareness.
-    - [ ] Modify `BlockExpansionRule` to preserve inline comments during brace expansion.
-    - [ ] **TEST CHECKPOINT**: Run `test_block_expansion_with_inline_comment()` - should pass
-    - [ ] Modify `StatementSplitRule` to preserve inline comments when splitting lines.
-    - [ ] **TEST CHECKPOINT**: Run `test_inline_comment_preservation()` - should pass
-- [ ] Task: **Conductor Checkpoint** - Phase 2 Complete
-    - [ ] All tasks in Phase 2 marked complete
-    - [ ] All Phase 2 exit criteria met
-    - [ ] All Phase 2 tests passing
-    - [ ] No regressions introduced
-    - [ ] Code reviewed by conductor
-    - [ ] Approval to proceed to Phase 3
+- [x] Task: Add Debug Utilities (Temporary). 3748252
+    - [x] Create `debug_comment_map.py` to visualize comment attachments.
+- [x] Task: Implement Comment Attachment Map logic in `engine.py`. 3748252
+    - [x] Implement `_find_all_comments` to extract comment nodes from AST.
+    - [x] **TEST CHECKPOINT**: Create `test_find_all_comments()` - verify it finds 10 comments in test file
+    - [x] Implement `_classify_comment` to determine attachment type.
+    - [x] **TEST CHECKPOINT**: Create `test_classify_comment()` - verify all 5 types detected
+    - [x] Implement `_build_comment_attachment_map` to link comments to target nodes.
+    - [x] **TEST CHECKPOINT**: Run `test_header_comment_proximity()` - should pass now
+- [x] Task: Implement Comment Proximity Preservation in `engine.py`. 3748252
+    - [x] Update `_cleanup_vertical_whitespace` to skip blank lines using attachment map.
+- [x] Task: Update Structural Rules for Comment Awareness. 3748252
+    - [x] Modify `BlockExpansionRule` to preserve inline comments during brace expansion.
+    - [x] **TEST CHECKPOINT**: Run `test_block_expansion_with_inline_comment()` - should pass
+    - [x] Modify `StatementSplitRule` to preserve inline comments when splitting lines.
+    - [x] **TEST CHECKPOINT**: Run `test_inline_comment_preservation()` - should pass
+- [x] Task: **Conductor Checkpoint** - Phase 2 Complete [checkpoint: 3748252]
+    - [x] All tasks in Phase 2 marked complete
+    - [x] All Phase 2 exit criteria met
+    - [x] All Phase 2 tests passing
+    - [x] No regressions introduced
+    - [x] Code reviewed by conductor
+    - [x] Approval to proceed to Phase 3
 
 ### Phase 2 Exit Criteria
-- [ ] All Phase 2 tasks completed
-- [ ] `_classify_comment()` correctly identifies all 5 attachment types
-- [ ] Comment map contains entries for test file with 10+ comments
-- [ ] `BlockExpansionRule` preserves inline comments (verified by new test)
-- [ ] `StatementSplitRule` doesn't split lines with inline comments
-- [ ] Header comments have NO blank line after cleanup (verified by test)
-- [ ] `test_header_comment_proximity()` passes
-- [ ] `test_inline_comment_preservation()` passes
-- [ ] No regressions in existing tests
-- [ ] Conductor approval received
+- [x] All Phase 2 tasks completed
+- [x] `_classify_comment()` correctly identifies all 5 attachment types
+- [x] Comment map contains entries for test file with 10+ comments
+- [x] `BlockExpansionRule` preserves inline comments (verified by new test)
+- [x] `StatementSplitRule` doesn't split lines with inline comments
+- [x] Header comments have NO blank line after cleanup (verified by test)
+- [x] `test_header_comment_proximity()` passes
+- [x] `test_inline_comment_preservation()` passes
+- [x] No regressions in existing tests
+- [x] Conductor approval received
 
 ## Phase 3: Alignment & Reflowing (Final Polish)
 - [ ] Task: Implement `CommentAlignmentRule` in `rules/comments.py`.
