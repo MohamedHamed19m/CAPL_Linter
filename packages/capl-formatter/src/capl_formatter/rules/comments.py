@@ -103,13 +103,10 @@ class CommentReflowRule(TextRule):
             visual_col = len(context.source[line_start:start_offset].expandtabs(self.config.indent_size))
             
             if comment.startswith("//"):
-                # SKIP REFLOW for inline comments unless they are REALLY long
+                # Check if it's an inline comment
                 is_inline = start_offset > line_start and context.source[start_offset-1] not in "\n\r"
-                if is_inline:
-                    # Only reflow inline if it exceeds line length significantly or we really want to
-                    if len(comment) + visual_col <= self.config.line_length:
-                        continue
-
+                
+                # Only reflow if it exceeds line length
                 if len(comment) + visual_col > self.config.line_length:
                     content = comment[2:].strip()
                     prefix_str = " " * visual_col + "// "
@@ -128,6 +125,7 @@ class CommentReflowRule(TextRule):
                         transformations.append(Transformation(m.start(), m.end(), new_comment))
             
             elif comment.startswith("/*"):
+                # Only reflow single-line blocks that are too long
                 if "\n" not in comment and len(comment) + visual_col > self.config.line_length:
                     content = self._get_block_content(comment)
                     if not content: continue
@@ -177,7 +175,7 @@ class CommentReflowRule(TextRule):
         for line in lines:
             # If line contains multiple diagram symbols, it's a diagram
             symbol_count = sum(line.count(s) for s in diagram_symbols)
-            if symbol_count > 2 or "-->" in line or "==>" in line or "<-" in line:
+            if symbol_count > 2 or "-->" in line or "==>" in line or "<-" in line or "->" in line:
                 return True
                 
         # Large blocks of symbols

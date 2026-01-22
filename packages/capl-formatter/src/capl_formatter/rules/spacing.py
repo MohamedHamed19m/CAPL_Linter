@@ -67,6 +67,9 @@ class SpacingRule(ASTRule):
                 transformations.append(Transformation(node_a.end_byte, node_a.end_byte, " "))
 
         def traverse(node):
+            if node.type == "ERROR":
+                return
+
             # Binary operators
             if node.type == "binary_expression" and len(node.children) >= 3:
                 left, op, right = node.children[0], node.children[1], node.children[2]

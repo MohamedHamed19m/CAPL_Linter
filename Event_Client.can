@@ -1,0 +1,126 @@
+// This CAPL file demonstrates how to set up an AUTOSAR Ethernet (SOME/IP) Event Client.
+// It subscribes to an event provided by an Event Server and processes the received data.
+
+includes
+{
+
+}
+
+variables
+{
+  dword serviceId = 10;
+  dword instanceId = 1;
+  dword eventId = 1;
+  dword eventGroupId = 1;
+  char namespaceName[64] = "MyNamespace";
+  char variableName[64] = "Data_Variable";
+}
+
+
+on start
+{
+    Initialize_Client();
+}
+
+
+void Initialize_Client()
+{
+  dword aep; // application endpoint handle
+  dword csi; // consumed Service Instance handle
+  dword ceg; // consumed Eventgroup handle
+  dword cev; // consumed Event handle
+  IP_Endpoint ep; // IP Endpoint variable
+    
+  ep = IP_Endpoint(UDP:192.168.1.5:4005);
+
+  // open application endpoint
+  aep = AREthOpenLocalApplicationEndpoint(ep);
+
+  // create Service Instance
+  csi = AREthCreateConsumedServiceInstance(aep, serviceId, instanceId);
+
+  // create Eventgroup
+  ceg = AREthAddConsumedEventGroup(csi, eventGroupId);
+
+  // create Event Consumer
+  cev = AREthCreateEventConsumer(csi, eventId,"CallbackEvent1");
+}
+
+void CallbackEvent1(dword cevHandle, dword messageHandle)
+{
+    byte size;
+    byte Event_Data[30];
+    dword dataLength;
+    long retVal;
+    dword i;
+    byte sysRet;
+
+    // get length of received data
+    dataLength = AREthGetLength(messageHandle);
+
+    // read received data
+    size = AREthGetData(messageHandle, dataLength, Event_Data);
+    if (size == 0)
+    {
+      if((retVal = AREthGetLastError()) != 0){
+        write("AUTOSAR Eth IL error occurred: Error code: %d", retVal);
+      }
+      return;
+    }
+
+    // process received data (here we just print it)
+    write("Received Event Data: ");
+    for (i = 0; i < dataLength; i++)
+    {
+        write("0x%02X ", Event_Data[i]);
+    }
+    
+    sysRet = sysSetVariableData(namespaceName, variableName, Event_Data, dataLength);
+    if(sysRet != 0)
+    {
+      write("Error setting shared data in Event_Client.");
+    }
+    else
+    {
+      @sysvar::MyNamespace::EventPayloadReceived = 1;
+    }
+}
+
+
+void OnAREthSDClientEventGroupStatusChanged( dword serviceId, dword instanceId, dword eventGroupId, long status)
+{
+  char buffer[100];
+  if(status == 0)
+  {
+    snprintf(buffer,elcount(buffer),"not subscribed");
+  }
+  else if(status == 1)
+  {
+    snprintf(buffer,elcount(buffer),"subscribed");
+    @sysvar::MyNamespace::EventGroupSubscribed = 1;
+  }
+  else
+  {
+    snprintf(buffer,elcount(buffer),"Undefined status");
+  }
+  write("Event group (ID %d), of service %d (instance %d): %s",eventGroupId,serviceId,instanceId,buffer);
+}
+
+
+void OnAREthSDClientServiceStatusChanged( dword serviceId, dword majorVersion, dword instanceId, LONG status)
+{
+  char buffer[100];
+  if(status == 0)
+  {
+    snprintf(buffer,elcount(buffer),"Service down");
+  }
+  else if(status == 1)
+  {
+    snprintf(buffer,elcount(buffer),"Service up");
+  }
+  else
+  {
+    snprintf(buffer,elcount(buffer),"Undefined status");
+  }
+  write("Service %d (instance %d, major version %d): %s",serviceId,instanceId,majorVersion,buffer);
+}

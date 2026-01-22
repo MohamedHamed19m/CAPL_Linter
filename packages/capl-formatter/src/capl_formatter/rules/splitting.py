@@ -23,6 +23,10 @@ class StatementSplitRule(ASTRule):
                 return
             
             if node.type in ["compound_statement", "translation_unit", "variables_block", "case_statement", "default_statement"]:
+                # Identify lines with errors to avoid mangling them
+                error_lines = {c.start_point[0] for c in node.children if c.type == "ERROR"}
+                error_lines.update({c.end_point[0] for c in node.children if c.type == "ERROR"})
+
                 prev_child = None
                 for child in node.children:
                     # Skip boundary tokens
@@ -34,6 +38,10 @@ class StatementSplitRule(ASTRule):
                         prev_child = child; continue
                     
                     if prev_child and prev_child.type not in ["{", "variables", ":", "else"]:
+                        # Skip splitting if this line has errors
+                        if child.start_point[0] in error_lines:
+                            prev_child = child; continue
+
                         # If two nodes are on the same line
                         if child.start_point[0] == prev_child.end_point[0]:
                             # Don't split labels
