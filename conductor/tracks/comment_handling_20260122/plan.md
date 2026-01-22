@@ -135,6 +135,6 @@
 - [x] Conductor approval received
 
 ## Post-Implementation: Cleanup
-- [ ] Task: Remove debug code and scripts.
-- [ ] Task: Final regression test.
-- [ ] Task: Merge feature branch.
+- [x] Task: Remove debug code and scripts. ce21d67
+- [x] Task: Final regression test. ce21d67
+- [x] Task: Merge feature branch. ce21d67

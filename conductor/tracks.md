@@ -9,5 +9,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: Comprehensive Comment Handling for CAPL Formatter**
+- [x] **Track: Comprehensive Comment Handling for CAPL Formatter**
 *Link: [./tracks/comment_handling_20260122/](./tracks/comment_handling_20260122/)*
