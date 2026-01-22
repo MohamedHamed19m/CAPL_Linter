@@ -31,6 +31,7 @@ class FormatterEngine:
             SwitchNormalizationRule,
             BraceStyleRule,
             SpacingRule,
+            VerticalSpacingRule,
             IndentationRule,
             WhitespaceCleanupRule,
         )
@@ -45,6 +46,7 @@ class FormatterEngine:
         self.add_rule(SwitchNormalizationRule(self.config))
         self.add_rule(BraceStyleRule(self.config))
         self.add_rule(SpacingRule(self.config))
+        self.add_rule(VerticalSpacingRule(self.config))
         # Note: IndentationRule and WhitespaceCleanupRule are handled
         # explicitly in Phases 2 and 3 of format_string.
 

@@ -9,6 +9,7 @@ from .structure import IncludeSortingRule, VariableOrderingRule
 from .comments import CommentReflowRule, CommentAlignmentRule
 from .wrapping import IntelligentWrappingRule
 from .quotes import QuoteNormalizationRule
+from .vertical_spacing import VerticalSpacingRule
 
 __all__ = [
     "FormattingRule",
@@ -29,4 +30,5 @@ __all__ = [
     "CommentAlignmentRule",
     "IntelligentWrappingRule",
     "QuoteNormalizationRule",
+    "VerticalSpacingRule",
 ]

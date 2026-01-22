@@ -1,0 +1,27 @@
+variables {
+  int g1;
+
+  int g2; // Global variables should preserve spacing
+}
+
+on start {
+  int x;
+  int y; // Setup variables should be compressed
+  // Comment in setup
+  int z;
+
+  x = 1;
+
+  y = 2; // Logic statements should preserve spacing
+
+  DoWork();
+
+  int late_decl; // Declaration in logic zone should NOT be compressed
+
+  late_decl = 3;
+}
+
+void MyFunc() {
+  int x; // Blank line after { should be removed
+  int y;
+}
