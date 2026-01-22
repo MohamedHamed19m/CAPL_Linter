@@ -116,7 +116,62 @@ class FormatterEngine:
 
     def _build_comment_attachment_map(self, source: str, tree) -> Dict[int, CommentAttachment]:
         """Builds a map of comment attachments."""
-        return {}
+        comments = self._find_all_comments(tree)
+        attachment_map = {}
+        lines = source.splitlines(keepends=True)
+        
+        for comment in comments:
+            attachment = self._classify_comment(comment, lines)
+            attachment_map[comment.start_byte] = attachment
+            
+        return attachment_map
+
+    def _classify_comment(self, comment_node, source_lines: List[str]) -> CommentAttachment:
+        """Determines the type of comment and its target node."""
+        prev_sibling = comment_node.prev_sibling
+        next_sibling = comment_node.next_sibling
+        
+        comment_line = comment_node.start_point[0]
+        
+        # Check for Section Divider
+        text = comment_node.text.decode('utf-8', errors='ignore').strip()
+        if text.startswith('//===') or text.startswith('//---'):
+            return CommentAttachment(comment_node, 'section', None, comment_line, -1, 0)
+        
+        # Check Inline: Previous sibling on same line
+        # Note: We loop back to skip over other comments if necessary, but simple check first
+        if prev_sibling and prev_sibling.end_point[0] == comment_line:
+             return CommentAttachment(comment_node, 'inline', prev_sibling, comment_line, prev_sibling.start_point[0], 0)
+
+        # Check Header: Next sibling exists
+        if next_sibling:
+             target_line = next_sibling.start_point[0]
+             return CommentAttachment(comment_node, 'header', next_sibling, comment_line, target_line, target_line - comment_line)
+             
+        # Check Footer: Previous sibling exists and is on previous line
+        if prev_sibling:
+             target_line = prev_sibling.end_point[0]
+             return CommentAttachment(comment_node, 'footer', prev_sibling, comment_line, target_line, comment_line - target_line)
+        
+        # Standalone
+        return CommentAttachment(comment_node, 'standalone', None, comment_line, -1, 0)
+
+    def _find_all_comments(self, tree) -> List[Any]:
+        """Recursively finds all comment nodes in the tree."""
+        comments = []
+        if not tree: return comments
+        
+        # Iterative traversal to avoid recursion limits
+        stack = [tree.root_node]
+        while stack:
+            node = stack.pop()
+            if node.type == 'comment':
+                comments.append(node)
+            
+            # Push children in reverse order to process them in original order
+            stack.extend(reversed(node.children))
+            
+        return comments
 
     def _normalize_top_level_indentation(self, source: str) -> str:
         """Ensure all top-level declarations start at column 0."""
@@ -151,7 +206,26 @@ class FormatterEngine:
     def _cleanup_vertical_whitespace(self, source: str, comment_map: Dict[int, CommentAttachment] = None) -> str:
         """Aggressively removes excessive blank lines BEFORE indentation."""
         
-        # STEP 0: Normalize indented blank lines to truly empty
+        # PASS 0: Comment Proximity Preservation
+        if comment_map and self.config.preserve_comment_proximity:
+            lines = source.splitlines(keepends=True)
+            lines_to_remove = set()
+            
+            for attachment in comment_map.values():
+                if attachment.attachment_type == 'header' and attachment.target_node:
+                    start_row = attachment.comment_line
+                    end_row = attachment.target_line
+                    
+                    # Remove blank lines between header comment and target
+                    if end_row > start_row + 1:
+                        for i in range(start_row + 1, end_row):
+                            if i < len(lines) and not lines[i].strip():
+                                lines_to_remove.add(i)
+            
+            if lines_to_remove:
+                source = "".join([line for i, line in enumerate(lines) if i not in lines_to_remove])
+
+        # STEP 1: Normalize indented blank lines to truly empty
         lines = source.split('\n')
         normalized = [line if line.strip() else '' for line in lines]
         source = '\n'.join(normalized)

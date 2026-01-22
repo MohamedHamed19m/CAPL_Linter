@@ -40,7 +40,7 @@ class StatementSplitRule(ASTRule):
                             if prev_child.type not in ["case", "default"]:
                                 # Split if it's a new statement or declaration
                                 is_stmt = child.type.endswith("statement") or child.type == "declaration"
-                                prev_is_end = prev_child.type in [";", "}"] or prev_child.type.endswith("statement") or prev_child.type == "declaration"
+                                prev_is_end = prev_child.type in [";", "}", "comment"] or prev_child.type.endswith("statement") or prev_child.type == "declaration"
                                 
                                 if is_stmt and prev_is_end:
                                     # Ensure we don't split } else
