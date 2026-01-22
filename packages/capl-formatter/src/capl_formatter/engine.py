@@ -1,7 +1,7 @@
-from typing import List, Union
+from typing import List, Union, Dict, Any
 from pathlib import Path
 import re
-from .models import FormatterConfig, FormatResult, FormatResults
+from .models import FormatterConfig, FormatResult, FormatResults, CommentAttachment
 from .rules.base import FormattingRule, ASTRule, TextRule, FormattingContext, Transformation
 from capl_tree_sitter.parser import CAPLParser
 
@@ -63,7 +63,17 @@ class FormatterEngine:
                 pass_modified = False
                 for rule in self.rules:
                     parse_result = self.parser.parse_string(current_source)
-                    context = FormattingContext(source=current_source, file_path=file_path, tree=parse_result.tree)
+                    
+                    # Phase 0: Build comment attachment map for this iteration
+                    comment_map = self._build_comment_attachment_map(current_source, parse_result.tree)
+                    
+                    context = FormattingContext(
+                        source=current_source, 
+                        file_path=file_path, 
+                        tree=parse_result.tree,
+                        metadata={'comment_attachments': comment_map}
+                    )
+                    
                     transforms = rule.analyze(context)
                     if transforms:
                         new_source = self._apply_transformations(current_source, transforms)
@@ -75,8 +85,14 @@ class FormatterEngine:
             
             # Phase 2: Vertical Whitespace Normalization
             from .rules.whitespace import WhitespaceCleanupRule
+            
+            # Build map for whitespace cleanup (requires fresh parse)
+            parse_result_ws = self.parser.parse_string(current_source)
+            comment_map_ws = self._build_comment_attachment_map(current_source, parse_result_ws.tree)
+            
+            current_source = self._cleanup_vertical_whitespace(current_source, comment_map_ws)
+            
             ws_rule = WhitespaceCleanupRule(self.config)
-            current_source = self._cleanup_vertical_whitespace(current_source)
             ws_transforms = ws_rule.analyze(FormattingContext(source=current_source, file_path=file_path, tree=None))
             if ws_transforms:
                 current_source = self._apply_transformations(current_source, ws_transforms)
@@ -97,6 +113,10 @@ class FormatterEngine:
             errors.append(f"{str(e)}\n{traceback.format_exc()}")
 
         return FormatResult(source=current_source, modified=modified, errors=errors)
+
+    def _build_comment_attachment_map(self, source: str, tree) -> Dict[int, CommentAttachment]:
+        """Builds a map of comment attachments."""
+        return {}
 
     def _normalize_top_level_indentation(self, source: str) -> str:
         """Ensure all top-level declarations start at column 0."""
@@ -128,7 +148,7 @@ class FormatterEngine:
         except Exception:
             return source
 
-    def _cleanup_vertical_whitespace(self, source: str) -> str:
+    def _cleanup_vertical_whitespace(self, source: str, comment_map: Dict[int, CommentAttachment] = None) -> str:
         """Aggressively removes excessive blank lines BEFORE indentation."""
         
         # STEP 0: Normalize indented blank lines to truly empty

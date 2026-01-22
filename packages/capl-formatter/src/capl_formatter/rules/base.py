@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from tree_sitter import Tree
 
 @dataclass
@@ -25,10 +25,13 @@ class FormattingContext:
     file_path: str = ""
     tree: Optional[Tree] = None
     lines: List[str] = None
+    metadata: Dict[str, Any] = None
 
     def __post_init__(self):
         if self.lines is None:
             self.lines = self.source.splitlines(keepends=True)
+        if self.metadata is None:
+            self.metadata = {}
 
 class FormattingRule(ABC):
     """Abstract base for all formatting rules."""
