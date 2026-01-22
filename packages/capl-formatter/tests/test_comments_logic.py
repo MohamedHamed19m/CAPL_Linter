@@ -95,3 +95,63 @@ class TestCommentLogic:
         # Ideally: int x; /* c */ \n int y;
         assert "int x; /* c */\n" in result.source or "/* c */\n" in result.source
         assert "int y;" in result.source
+
+    def test_inline_comment_alignment(self):
+        source = """
+        int x; // short
+        int very_long_variable; // longer
+        """
+        config = FormatterConfig(align_inline_comments=True, inline_comment_column=40)
+        engine = FormatterEngine(config)
+        result = engine.format_string(source)
+        
+        lines = [l for l in result.source.splitlines() if "//" in l]
+        assert len(lines) == 2
+        col1 = lines[0].find("//")
+        col2 = lines[1].find("//")
+        assert col1 == col2
+        assert col1 >= 30 # At least some padding
+
+    def test_comment_reflow_long_line(self):
+        long_comment = "// " + "A" * 120
+        source = f"""
+        {long_comment}
+        """
+        config = FormatterConfig(line_length=100, reflow_comments=True)
+        engine = FormatterEngine(config)
+        result = engine.format_string(source)
+        
+        # Should be wrapped
+        lines = [l for l in result.source.splitlines() if l.strip()]
+        assert len(lines) >= 2
+        for line in lines:
+            assert len(line) <= 100
+
+    def test_doxygen_preservation(self):
+        source = """
+        /**
+         * @param x The value
+         * This line is very very very very very very very very very very very very very very very very very very long
+         */
+        """
+        config = FormatterConfig(line_length=50, reflow_comments=True)
+        engine = FormatterEngine(config)
+        result = engine.format_string(source)
+        
+        assert "This line is very very" in result.source
+
+    def test_ascii_art_preservation(self):
+        source = """
+        /*
+         * +---------+
+         * | Diagram |
+         * +---------+
+         * This line is very very very very very very very very very very very very very very very very very very long
+         */
+        """
+        config = FormatterConfig(line_length=50, reflow_comments=True)
+        engine = FormatterEngine(config)
+        result = engine.format_string(source)
+        
+        assert "+---------+" in result.source
+        assert "This line is very very" in result.source

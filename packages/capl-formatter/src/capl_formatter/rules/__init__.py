@@ -6,7 +6,7 @@ from .block_expansion import BlockExpansionRule
 from .splitting import StatementSplitRule
 from .switch import SwitchNormalizationRule
 from .structure import IncludeSortingRule, VariableOrderingRule
-from .comments import CommentReflowRule
+from .comments import CommentReflowRule, CommentAlignmentRule
 from .wrapping import IntelligentWrappingRule
 from .quotes import QuoteNormalizationRule
 
@@ -26,6 +26,7 @@ __all__ = [
     "IncludeSortingRule",
     "VariableOrderingRule",
     "CommentReflowRule",
+    "CommentAlignmentRule",
     "IntelligentWrappingRule",
     "QuoteNormalizationRule"
 ]

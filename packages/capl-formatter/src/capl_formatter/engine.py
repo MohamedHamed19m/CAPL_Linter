@@ -22,7 +22,7 @@ class FormatterEngine:
             QuoteNormalizationRule,
             IncludeSortingRule,
             VariableOrderingRule,
-            CommentReflowRule,
+            # CommentReflowRule,  # Moved to Phase 4
             IntelligentWrappingRule,
             BlockExpansionRule,
             StatementSplitRule,
@@ -35,7 +35,7 @@ class FormatterEngine:
         self.add_rule(QuoteNormalizationRule(self.config))
         self.add_rule(IncludeSortingRule(self.config))
         self.add_rule(VariableOrderingRule(self.config))
-        self.add_rule(CommentReflowRule(self.config))
+        # self.add_rule(CommentReflowRule(self.config))
         self.add_rule(IntelligentWrappingRule(self.config))
         self.add_rule(BlockExpansionRule(self.config))
         self.add_rule(StatementSplitRule(self.config))
@@ -107,6 +107,31 @@ class FormatterEngine:
             if indent_transforms:
                 current_source = self._apply_transformations(current_source, indent_transforms)
                 modified = True
+            
+            # Phase 4: Comment Polish (Alignment & Reflow)
+            from .rules.comments import CommentAlignmentRule, CommentReflowRule
+            
+            # Alignment
+            if self.config.align_inline_comments:
+                parse_result_align = self.parser.parse_string(current_source)
+                comment_map_align = self._build_comment_attachment_map(current_source, parse_result_align.tree)
+                context_align = FormattingContext(source=current_source, file_path=file_path, tree=parse_result_align.tree, metadata={'comment_attachments': comment_map_align})
+                
+                align_rule = CommentAlignmentRule(self.config)
+                align_transforms = align_rule.analyze(context_align)
+                if align_transforms:
+                    current_source = self._apply_transformations(current_source, align_transforms)
+                    modified = True
+            
+            # Reflow
+            if self.config.reflow_comments:
+                parse_result_reflow = self.parser.parse_string(current_source)
+                context_reflow = FormattingContext(source=current_source, file_path=file_path, tree=parse_result_reflow.tree)
+                reflow_rule = CommentReflowRule(self.config)
+                reflow_transforms = reflow_rule.analyze(context_reflow)
+                if reflow_transforms:
+                    current_source = self._apply_transformations(current_source, reflow_transforms)
+                    modified = True
                     
         except Exception as e:
             import traceback
