@@ -1,80 +1,77 @@
-// This CAPL file demonstrates how to set up an AUTOSAR Ethernet (SOME/IP) Event Client.
-// It subscribes to an event provided by an Event Server and processes the received data.
+// This CAPL file demonstrates how to set up an AUTOSAR Ethernet (SOME/IP) Event Server.
+// It provides an event that clients can subscribe to and receive data from.
 includes {
+
 }
 
 variables {
   dword serviceId = 10;
   dword instanceId = 1;
   dword eventId = 1;
+
   dword eventGroupId = 1;
-  char namespaceName[64] = "MyNamespace";
-  char variableName[64] = "Data_Variable";
 }
 
 on start {
-  Initialize_Client();
+  Initialize_Server();
 }
 
-void Initialize_Client() {
-  dword aep;                            // application endpoint handle
-  dword csi;                            // consumed Service Instance handle
-  dword ceg;                            // consumed Eventgroup handle
-  dword cev;                            // consumed Event handle
+void Initialize_Server() {
+  dword aep;                            // Application Endpoint handle
+  dword psi;                            // provided service handle
+
+  dword peg;                            // provided Eventgroup handle
+  dword pev;                            // provided Event handle
   IP_Endpoint ep;                       // IP Endpoint variable
 
-  ep = IP_Endpoint(UDP:192.168.1.5:4005);
-  // open application endpoint
+  ep = IP_Endpoint(UDP:192.168.1.2:4001);
+
+  // open Application Endpoint
   aep = AREthOpenLocalApplicationEndpoint(ep);
+
   // create Service Instance
-  csi = AREthCreateConsumedServiceInstance(aep, serviceId, instanceId);
+  psi = AREthCreateProvidedServiceInstance(aep, serviceId, instanceId);
+
   // create Eventgroup
-  ceg = AREthAddConsumedEventGroup(csi, eventGroupId);
-  // create Event Consumer
-  cev = AREthCreateEventConsumer(csi, eventId, "CallbackEvent1");
+  peg = AREthAddProvidedEventGroup(psi, eventGroupId);
+
+  // create Event and add Event to Eventgroup
+  pev = AREthAddEvent(psi, eventId, "OnPrepareEvent1");
+  AREthAddEventToEventgroup(peg, pev);
+
+  // ensure that Event is sent cyclically
+  AREthSetProperty(pev, "CycleTimeMs", 1000);
+
+  // 1 = the first client will be already served by multicast.Further clients will also use
+  // multicast.
+  // This setting is only effective if there are multiple clients connected to the same Eventgroup.
+  AREthSetProperty(eventGroupHandle, "MulticastThreshold", 1);
+
+  // set multicast IP address for Eventgroup
+  AREthSetProperty(eventGroupHandle, "SDMulticastIp", "239.192.255.251");
+
+  // set VlanId for Eventgroup
+  AREthSetProperty(eventGroupHandle, "SDVlanId", 2500);
 }
 
-void CallbackEvent1(dword cevHandle, dword messageHandle) {
-  byte size;
-  byte Event_Data[30];
-  dword dataLength;
-  long retVal;
-  dword i;
-  byte sysRet;
-  // get length of received data
-  dataLength = AREthGetLength(messageHandle);
-  // read received data
-  size = AREthGetData(messageHandle, dataLength, Event_Data);
-  if (size == 0) {
-    if ((retVal = AREthGetLastError()) != 0) {
-      write("AUTOSAR Eth IL error occurred: Error code: %d", retVal);
-    }
-    return;
-  }
+void OnPrepareEvent1(dword eventHandle, dword messageHandle) {
+  byte ret;
+  byte Dummy_Data[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
 
-  // process received data (here we just print it)
-  write("Received Event Data: ");
-  for (i = 0; i < dataLength; i++) {
-    write("0x%02X ", Event_Data[i]);
-  }
-
-  sysRet = sysSetVariableData(namespaceName, variableName, Event_Data, dataLength);
-  if (sysRet != 0) {
-    write("Error setting shared data in Event_Client.");
-  }
-  else {
-    @sysvar::MyNamespace::EventPayloadReceived = 1;
+  ret = AREthSetData(messageHandle, elcount(Dummy_Data), Dummy_Data); // form 2
+  if (ret != 0) {
+    write("Error setting Event data: %d", ret);
   }
 }
 
-void OnAREthSDClientEventGroupStatusChanged(dword serviceId, dword instanceId, dword eventGroupId, long status) {
+void OnAREthSDServerEventGroupStatusChanged(dword serviceId, dword instanceId, dword eventGroupId, long status, dword newIpAddress, dword newPort) {
   char buffer[100];
   if (status == 0) {
     snprintf(buffer, elcount(buffer), "not subscribed");
   }
   else if (status == 1) {
     snprintf(buffer, elcount(buffer), "subscribed");
-    @sysvar::MyNamespace::EventGroupSubscribed = 1;
+    @sysvar::MyNamespace::ServerEventGroupSubscribed = 1;
   }
   else {
     snprintf(buffer, elcount(buffer), "Undefined status");
@@ -82,16 +79,38 @@ void OnAREthSDClientEventGroupStatusChanged(dword serviceId, dword instanceId, d
   write("Event group (ID %d), of service %d (instance %d): %s", eventGroupId, serviceId, instanceId, buffer);
 }
 
-void OnAREthSDClientServiceStatusChanged(dword serviceId, dword majorVersion, dword instanceId, LONG status) {
-  char buffer[100];
-  if (status == 0) {
-    snprintf(buffer, elcount(buffer), "Service down");
+variables {
+  IP_Endpoint TCP:192.168.1.1:4000 ipEndpoint1;
+  IP_Endpoint 192.168.1.2:4001 ipEndpoint2;
+  IP_Endpoint 192.168.1.2 ipEndpoint3;
+  IP_Endpoint UDP:[ff::1]:6000 ipEndpoint4;
+  IP_Endpoint [ff::1]:6001 ipEndpoint5;
+  IP_Endpoint ff::1 ipEndpoint6;
+}
+
+on start {
+  IP_Endpoint ep;
+  ep = IP_Endpoint(192.168.1.2:4001);
+  //...do something with ep
+}
+
+on start {
+  DoSomething(IP_Address(FC00::0001));
+}
+
+void DoSomething(IP_Address addr) {
+  if (addr.IsIPv4Address()) {
+    //...
   }
-  else if (status == 1) {
-    snprintf(buffer, elcount(buffer), "Service up");
+  else if (addr.IsIPv6Address()) {
+    //...
   }
-  else {
-    snprintf(buffer, elcount(buffer), "Undefined status");
+}
+
+on start {
+  IP_Endpoint 192.168.1.1:4000 ep1;
+  IP_Endpoint 192.168.1.1:4000 ep2;
+  if (ep1 == ep2) {
+    write("Endpoints are equal!");
   }
-  write("Service %d (instance %d, major version %d): %s", serviceId, instanceId, majorVersion, buffer);
 }

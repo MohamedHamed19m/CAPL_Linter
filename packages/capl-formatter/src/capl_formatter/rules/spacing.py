@@ -137,7 +137,7 @@ class SpacingRule(ASTRule):
                     transformations.append(Transformation(node.start_byte, node.start_byte, " "))
 
             # Comma/semicolon spacing
-            if node.type in [".", ",", ";"]:
+            if node.type in [",", ";"]:
                 parent = node.parent
                 if parent:
                     try:
