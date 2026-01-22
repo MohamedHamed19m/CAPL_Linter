@@ -103,36 +103,36 @@
 - [x] Conductor approval received
 
 ## Phase 4: Integration & Validation
-- [ ] Task: Create Comprehensive Test Fixtures.
-    - [ ] Add `tests/test_comments.py` with all required unit test cases.
-    - [ ] Add `comments_comprehensive.can` golden files (input and expected).
-- [ ] Task: Regression Testing & Snapshots.
-    - [ ] Run full test suite and ensure no regressions.
-    - [ ] Update snapshot tests with `--snapshot-update`.
-- [ ] Task: Performance Benchmarking.
-    - [ ] Verify < 10% performance overhead.
-- [ ] Task: Documentation Updates.
-    - [ ] Update `GEMINI.md` Section "Core Rules Reference".
-    - [ ] Update `GEMINI.md` Section "Common Anti-patterns".
-    - [ ] Update `README.md` with features and config options.
-- [ ] Task: **Conductor Checkpoint** - Phase 4 Complete
-    - [ ] All tasks in Phase 4 marked complete
-    - [ ] All Phase 4 exit criteria met
-    - [ ] All Phase 4 tests passing
-    - [ ] No regressions introduced
-    - [ ] Code reviewed by conductor
-    - [ ] Approval to proceed to Post-Implementation
+- [x] Task: Create Comprehensive Test Fixtures. 64bf843
+    - [x] Add `tests/test_comments.py` with all required unit test cases.
+    - [x] Add `comments_comprehensive.can` golden files (input and expected).
+- [x] Task: Regression Testing & Snapshots. 64bf843
+    - [x] Run full test suite and ensure no regressions.
+    - [x] Update snapshot tests with `--snapshot-update`.
+- [x] Task: Performance Benchmarking. 64bf843
+    - [x] Verify < 10% performance overhead.
+- [x] Task: Documentation Updates. 64bf843
+    - [x] Update `GEMINI.md` Section "Core Rules Reference".
+    - [x] Update `GEMINI.md` Section "Common Anti-patterns".
+    - [x] Update `README.md` with features and config options.
+- [x] Task: **Conductor Checkpoint** - Phase 4 Complete [checkpoint: 64bf843]
+    - [x] All tasks in Phase 4 marked complete
+    - [x] All Phase 4 exit criteria met
+    - [x] All Phase 4 tests passing
+    - [x] No regressions introduced
+    - [x] Code reviewed by conductor
+    - [x] Approval to proceed to Post-Implementation
 
 ### Phase 4 Exit Criteria
-- [ ] All Phase 4 tasks completed
-- [ ] Golden file `comments_comprehensive.can` passes
-- [ ] All 8 unit tests in `test_comments.py` pass
-- [ ] All existing golden files still pass
-- [ ] Snapshots updated and reviewed
-- [ ] Performance < 10% overhead (benchmark documented)
-- [ ] Idempotency verified: format(format(x)) == format(x)
-- [ ] GEMINI.md updated with comment handling section
-- [ ] Conductor approval received
+- [x] All Phase 4 tasks completed
+- [x] Golden file `comments_comprehensive.can` passes
+- [x] All 8 unit tests in `test_comments.py` pass
+- [x] All existing golden files still pass
+- [x] Snapshots updated and reviewed
+- [x] Performance < 10% overhead (benchmark documented)
+- [x] Idempotency verified: format(format(x)) == format(x)
+- [x] GEMINI.md updated with comment handling section
+- [x] Conductor approval received
 
 ## Post-Implementation: Cleanup
 - [ ] Task: Remove debug code and scripts.
