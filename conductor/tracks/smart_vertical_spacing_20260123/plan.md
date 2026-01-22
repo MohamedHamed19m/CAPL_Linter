@@ -1,17 +1,17 @@
 # Implementation Plan: Smart Vertical Spacing
 
 ## Phase 1: Core Engine Refactoring
-- [ ] Task: Remove aggressive vertical squashing from `engine.py`.
-    - [ ] Delete `re.sub(r";
+- [x] Task: Remove aggressive vertical squashing from `engine.py`. [5db2267]
+    - [x] Delete `re.sub(r";
 
 +", r";
 ", source)`.
-    - [ ] Delete `re.sub(r"
+    - [x] Delete `re.sub(r"
 \s*
 (\s*[}\]])", r"
 \1", source)`.
-- [ ] Task: Refine `_cleanup_vertical_whitespace` logic in `engine.py`.
-    - [ ] Ensure `
+- [x] Task: Refine `_cleanup_vertical_whitespace` logic in `engine.py`. [5db2267]
+    - [x] Ensure `
 {3,}` is collapsed to `
 
 ` (Global Max 1 Blank Line).
