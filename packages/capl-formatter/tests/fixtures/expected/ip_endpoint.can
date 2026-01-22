@@ -1,0 +1,9 @@
+variables {
+  IP_Endpoint TCP:192.168.1.1:4000 ipEndpoint1;
+  IP_Endpoint 192.168.1.2:4001 ipEndpoint2;
+}
+
+on start {
+  IP_Endpoint ep;
+  ep = IP_Endpoint(UDP:192.168.1.5:4005);
+}

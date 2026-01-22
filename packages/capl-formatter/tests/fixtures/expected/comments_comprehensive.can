@@ -27,7 +27,10 @@ void test_wrapping() {
 // =============================================================================
 // TEST 4: Block Comment Wrapping
 // =============================================================================
-/* This is a very long block comment that exceeds the line length limit and should be wrapped to multiple lines for better readability */
+/*
+ * This is a very long block comment that exceeds the line length limit and should be wrapped to
+ * multiple lines for better readability
+ */
 void test_block() {
 }
 
@@ -54,11 +57,10 @@ void test_ascii_art() {
 
 /*
  * State Machine:
- * IDLE --> RUNNING --> DONE
- *   |         |          |
- *   +-----> ERROR <------+
+ * IDLE--> RUNNING--> DONE
+ * | | |
+ * +-----> ERROR <------+
  */
-
 // =============================================================================
 // TEST 7: Section Dividers
 // =============================================================================
@@ -83,13 +85,11 @@ struct Point {
   int x;                                // x coord
   int y;                                // y coord
 };
-
 enum Color {
   RED,                                  // red color
   GREEN,                                // green color
   BLUE                                  // blue color
 };
-
 // =============================================================================
 // TEST 9: Multiple Header Comments
 // =============================================================================
@@ -137,11 +137,10 @@ int y; /* word */
 // TODO: implement this feature with proper error handling and validation
 // FIXME: bug in edge case
 // NOTE: this assumes X
-
 // =============================================================================
 // TEST 14: UTF-8 and Emoji
 // =============================================================================
 void test_unicode() {
   int x;                                // 中文注释
-  int y; // Comment with emoji 🚀
+  int y; // Comme                       nt with emoji 🚀
 }

@@ -1,44 +1,42 @@
 // =============================================================================
 // TEST 1: Header Comment Proximity
 // =============================================================================
-
 // Header comment
-
 void test_header() {
-int x;
+  int x;
 }
 
 // =============================================================================
 // TEST 2: Inline Comment Alignment
 // =============================================================================
-
 void test_alignment() {
-int x; // short
-int very_long_variable_name; // longer
-int z; // another
+  int x;                                // short
+  int very_long_variable_name;          // longer
+  int z;                                // another
 }
 
 // =============================================================================
 // TEST 3: Long Line Comment Wrapping
 // =============================================================================
-
 void test_wrapping() {
-// This is a very long comment that exceeds the line length limit of 100 characters and should be wrapped
-int x = 1;
+  // This is a very long comment that exceeds the line length limit of 100 characters and should be
+  // wrapped
+  int x = 1;
 }
 
 // =============================================================================
 // TEST 4: Block Comment Wrapping
 // =============================================================================
-
-/* This is a very long block comment that exceeds the line length limit and should be wrapped to multiple lines for better readability */
+/*
+ * This is a very long block comment that exceeds the line length limit and should be wrapped to
+ * multiple lines for better readability
+ */
 void test_block() {
 }
 
 // =============================================================================
 // TEST 5: Doxygen Preservation (No Reflow)
 // =============================================================================
-
 /**
  * @param x value
  * This line is very very very very very very very very very very very very very very very very very very long
@@ -49,7 +47,6 @@ void test_doxygen(int x) {
 // =============================================================================
 // TEST 6: ASCII Art Preservation
 // =============================================================================
-
 /*
  * +---+---+---+
  * | A | B | C |
@@ -60,15 +57,13 @@ void test_ascii_art() {
 
 /*
  * State Machine:
- * IDLE --> RUNNING --> DONE
- *   |         |          |
- *   +-----> ERROR <------+
+ * IDLE--> RUNNING--> DONE
+ * | | |
+ * +-----> ERROR <------+
  */
-
 // =============================================================================
 // TEST 7: Section Dividers
 // =============================================================================
-
 //=============================================================================
 // Section: Helper Functions
 //=============================================================================
@@ -86,22 +81,19 @@ void helper2() {
 // =============================================================================
 // TEST 8: Block Expansion with Inline Comments
 // =============================================================================
-
-struct Point{int x; // x coord
-int y; // y coord
+struct Point {
+  int x;                                // x coord
+  int y;                                // y coord
 };
-
-enum Color{RED, // red color
-GREEN, // green color
-BLUE // blue color
+enum Color {
+  RED,                                  // red color
+  GREEN,                                // green color
+  BLUE                                  // blue color
 };
-
 // =============================================================================
 // TEST 9: Multiple Header Comments
 // =============================================================================
-
 // First comment
-
 // Second comment
 void test_multi_header() {
 }
@@ -109,32 +101,30 @@ void test_multi_header() {
 // =============================================================================
 // TEST 10: Mixed Comment Styles
 // =============================================================================
-
 void test_mixed() {
-int x; // inline
-/* block */ int y;
-// standalone
-int z;
+  int x; // inline
+  /* block */
+  int y;
+  // standalone
+  int z;
 }
 
 // =============================================================================
 // TEST 11: Switch Statement Comments
 // =============================================================================
-
 void test_switch(int x) {
-switch (x) {
-case 1: // case 1 comment
-break;
-// case 2 header
-case 2:
-break;
-}
+  switch (x) {
+    case 1: // case 1 comment
+      break;
+    // case 2 header
+    case 2:
+      break;
+  }
 }
 
 // =============================================================================
 // TEST 12: Empty/Special Comments
 // =============================================================================
-
 //
 int x; //
 
@@ -144,16 +134,13 @@ int y; /* word */
 // =============================================================================
 // TEST 13: TODO/FIXME Tags
 // =============================================================================
-
 // TODO: implement this feature with proper error handling and validation
 // FIXME: bug in edge case
 // NOTE: this assumes X
-
 // =============================================================================
 // TEST 14: UTF-8 and Emoji
 // =============================================================================
-
 void test_unicode() {
-int x; // 中文注释
-int y; // Comment with emoji 🚀
+  int x;                                // 中文注释
+  int y; // Comme                       nt with emoji 🚀
 }
