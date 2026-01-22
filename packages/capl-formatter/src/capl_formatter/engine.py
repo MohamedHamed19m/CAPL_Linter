@@ -292,26 +292,14 @@ class FormatterEngine:
         normalized = [line if line.strip() else "" for line in lines]
         source = "\n".join(normalized)
 
-        # PASS 1: Collapse multiple blank lines globally
+        # PASS 1: Collapse multiple blank lines globally (Max 1 blank line)
         while "\n\n\n" in source:
             source = source.replace("\n\n\n", "\n\n")
 
-        # PASS 2: Remove blank lines at block boundaries
-        # After {
-        source = re.sub(r"\{\n\n+", r"{\n", source)
-
-        # Before closing braces (handles indented/trailing cases)
-        source = re.sub(r"\n\s*\n(\s*[}\]])", r"\n\1", source)
-
-        # PASS 3: Remove blank lines after case/default labels
+        # PASS 2: Specific Label/Enum Cleanup
         source = re.sub(r"(case\s+[^:]+:)\s*\n\n+", r"\1\n", source)
         source = re.sub(r"(default\s*:)\s*\n\n+", r"\1\n", source)
-
-        # PASS 4: Remove blank lines after commas (ENUM FIX)
         source = re.sub(r",\n\n+", r",\n", source)
-
-        # PASS 5: Remove blank lines after semicolons in blocks
-        source = re.sub(r";\n\n+", r";\n", source)
 
         return source
 
