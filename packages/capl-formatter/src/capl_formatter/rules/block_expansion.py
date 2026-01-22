@@ -29,43 +29,53 @@ class BlockExpansionRule(ASTRule):
                 
                 # Expand opening brace
                 if open_brace:
-                    if open_brace.end_byte < len(context.source) and context.source[open_brace.end_byte] != '\n':
+                    ob_end = open_brace.end_byte
+                    if ob_end < len(context.source) and context.source[ob_end] != '\n':
+                        # Check what follows
                         line_idx = open_brace.end_point[0]
                         line = context.lines[line_idx]
+                        # Text on this line after the brace
                         after = line[open_brace.end_point[1]:].strip()
+                        
+                        # Only expand if there's actual content (not just a trailing newline or comment)
+                        # Actually, if it's not a newline, we WANT a newline.
                         if after != "" and not after.startswith(("//", "/*")):
-                            pos = open_brace.end_byte
+                            # Skip leading spaces to minimize whitespace mess
+                            pos = ob_end
                             while pos < len(context.source) and context.source[pos] in [' ', '\t']:
                                 pos += 1
+                            
                             transformations.append(Transformation(
-                                start_byte=open_brace.end_byte,
+                                start_byte=ob_end,
                                 end_byte=pos,
                                 new_content="\n"
                             ))
                 
                 # Expand closing brace
                 if close_brace:
-                    if close_brace.start_byte > 0 and context.source[close_brace.start_byte - 1] != '\n':
+                    cb_start = close_brace.start_byte
+                    if cb_start > 0 and cb_start <= len(context.source) and context.source[cb_start - 1] != '\n':
                         line_idx = close_brace.start_point[0]
                         line = context.lines[line_idx]
                         before = line[:close_brace.start_point[1]].strip()
+                        
                         if before != "":
-                            pos = close_brace.start_byte - 1
+                            pos = cb_start - 1
                             while pos >= 0 and context.source[pos] in [' ', '\t']:
                                 pos -= 1
+                            
                             transformations.append(Transformation(
                                 start_byte=pos + 1,
-                                end_byte=close_brace.start_byte,
+                                end_byte=cb_start,
                                 new_content="\n"
                             ))
             
             # Special handling for struct and enum definitions
             if node.type in ["struct_specifier", "enum_specifier"]:
-                if node.start_point[0] == node.end_point[0]:
-                    for child in node.children:
-                        if child.type in ["field_declaration_list", "enumerator_list"]:
-                            self._expand_struct_enum_members(child, transformations, context)
-                            break
+                for child in node.children:
+                    if child.type in ["field_declaration_list", "enumerator_list"]:
+                        self._expand_struct_enum_members(child, transformations, context)
+                        break
 
             for child in node.children: 
                 traverse(child)
@@ -81,21 +91,18 @@ class BlockExpansionRule(ASTRule):
         if len(members) <= 1:
             return
         
-        first_line = members[0].start_point[0]
-        needs_expansion = any(m.start_point[0] == first_line for m in members[1:])
-        
-        if not needs_expansion:
-            return
-        
         prev_member = None
         for member in members:
             if prev_member:
-                pos = member.start_byte - 1
-                while pos >= 0 and context.source[pos] in [' ', '\t']:
-                    pos -= 1
-                
-                if pos >= 0 and context.source[pos] != '\n':
-                    if member.start_point[0] == prev_member.end_point[0] or member.start_point[0] == first_line:
+                # If two members are on the same line, split them
+                if member.start_point[0] == prev_member.end_point[0]:
+                    pos = member.start_byte - 1
+                    # Scan back past spaces
+                    while pos >= 0 and context.source[pos] in [' ', '\t']:
+                        pos -= 1
+                    
+                    # Insert newline if not already there
+                    if pos >= 0 and context.source[pos] != '\n':
                         transformations.append(Transformation(
                             start_byte=pos + 1,
                             end_byte=member.start_byte,

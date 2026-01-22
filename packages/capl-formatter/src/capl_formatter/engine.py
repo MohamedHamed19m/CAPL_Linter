@@ -58,7 +58,7 @@ class FormatterEngine:
 
         try:
             # Phase 1: Structural Convergence
-            max_passes = 2
+            max_passes = 5
             for i in range(max_passes):
                 pass_modified = False
                 for rule in self.rules:
@@ -99,11 +99,11 @@ class FormatterEngine:
                 modified = True
             
             # Phase 3: Final Indentation Pass
-            parse_result = self.parser.parse_string(current_source)
-            context = FormattingContext(source=current_source, file_path=file_path, tree=parse_result.tree)
+            parse_result_final = self.parser.parse_string(current_source)
+            context_indent = FormattingContext(source=current_source, file_path=file_path, tree=parse_result_final.tree)
             from .rules.indentation import IndentationRule
             indent_rule = IndentationRule(self.config)
-            indent_transforms = indent_rule.analyze(context)
+            indent_transforms = indent_rule.analyze(context_indent)
             if indent_transforms:
                 current_source = self._apply_transformations(current_source, indent_transforms)
                 modified = True
@@ -111,27 +111,29 @@ class FormatterEngine:
             # Phase 4: Comment Polish (Alignment & Reflow)
             from .rules.comments import CommentAlignmentRule, CommentReflowRule
             
-            # Alignment
+            rules_p4 = []
             if self.config.align_inline_comments:
-                parse_result_align = self.parser.parse_string(current_source)
-                comment_map_align = self._build_comment_attachment_map(current_source, parse_result_align.tree)
-                context_align = FormattingContext(source=current_source, file_path=file_path, tree=parse_result_align.tree, metadata={'comment_attachments': comment_map_align})
-                
-                align_rule = CommentAlignmentRule(self.config)
-                align_transforms = align_rule.analyze(context_align)
-                if align_transforms:
-                    current_source = self._apply_transformations(current_source, align_transforms)
-                    modified = True
-            
-            # Reflow
+                rules_p4.append(CommentAlignmentRule(self.config))
             if self.config.reflow_comments:
-                parse_result_reflow = self.parser.parse_string(current_source)
-                context_reflow = FormattingContext(source=current_source, file_path=file_path, tree=parse_result_reflow.tree)
-                reflow_rule = CommentReflowRule(self.config)
-                reflow_transforms = reflow_rule.analyze(context_reflow)
-                if reflow_transforms:
-                    current_source = self._apply_transformations(current_source, reflow_transforms)
-                    modified = True
+                rules_p4.append(CommentReflowRule(self.config))
+                
+            for rule in rules_p4:
+                # Fresh parse for every polish rule
+                parse_result_p4 = self.parser.parse_string(current_source)
+                comment_map_p4 = self._build_comment_attachment_map(current_source, parse_result_p4.tree)
+                context_p4 = FormattingContext(
+                    source=current_source, 
+                    file_path=file_path, 
+                    tree=parse_result_p4.tree, 
+                    metadata={'comment_attachments': comment_map_p4}
+                )
+                
+                transforms = rule.analyze(context_p4)
+                if transforms:
+                    new_source = self._apply_transformations(current_source, transforms)
+                    if new_source != current_source:
+                        current_source = new_source
+                        modified = True
                     
         except Exception as e:
             import traceback
