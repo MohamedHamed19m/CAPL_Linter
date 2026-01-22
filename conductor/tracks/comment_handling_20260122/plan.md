@@ -1,35 +1,35 @@
 # Implementation Plan: Comprehensive Comment Handling
 
 ## Pre-Implementation: Setup
-- [ ] Create feature branch `feat/comment-handling`.
-- [ ] Document rollback strategy (Revert to main if Phase 1/2 fails; Disable rules if Phase 3 fails).
+- [x] Create feature branch `feat/comment-handling`. 03e5c95
+- [x] Document rollback strategy (Revert to main if Phase 1/2 fails; Disable rules if Phase 3 fails). 03e5c95
 
 ## Phase 1: Foundation (Data Structures & Engine Prep)
-- [ ] Task: Update `models.py` with `CommentAttachment` and enhanced `FormatterConfig`.
-    - [ ] Add `CommentAttachment` dataclass.
-    - [ ] Add `enable_comment_features` (master switch) and other config fields to `FormatterConfig`.
-- [ ] Task: Update `FormattingContext` in `rules/base.py` to support metadata.
-    - [ ] Add `metadata` field to `FormattingContext` and initialize in `__post_init__`.
-- [ ] Task: Prepare `engine.py` for Phase 0 processing.
-    - [ ] Stub `_build_comment_attachment_map` method (return empty dict).
-    - [ ] Inject `metadata` containing the attachment map into rule contexts.
-- [ ] Task: **Conductor Checkpoint** - Phase 1 Complete
-    - [ ] All tasks in Phase 1 marked complete
-    - [ ] All Phase 1 exit criteria met
-    - [ ] All Phase 1 tests passing
-    - [ ] No regressions introduced
-    - [ ] Code reviewed by conductor
-    - [ ] Approval to proceed to Phase 2
+- [x] Task: Update `models.py` with `CommentAttachment` and enhanced `FormatterConfig`. 03e5c95
+    - [x] Add `CommentAttachment` dataclass.
+    - [x] Add `enable_comment_features` (master switch) and other config fields to `FormatterConfig`.
+- [x] Task: Update `FormattingContext` in `rules/base.py` to support metadata. 03e5c95
+    - [x] Add `metadata` field to `FormattingContext` and initialize in `__post_init__`.
+- [x] Task: Prepare `engine.py` for Phase 0 processing. 03e5c95
+    - [x] Stub `_build_comment_attachment_map` method (return empty dict).
+    - [x] Inject `metadata` containing the attachment map into rule contexts.
+- [x] Task: **Conductor Checkpoint** - Phase 1 Complete [checkpoint: d1bc274]
+    - [x] All tasks in Phase 1 marked complete
+    - [x] All Phase 1 exit criteria met
+    - [x] All Phase 1 tests passing
+    - [x] No regressions introduced
+    - [x] Code reviewed by conductor
+    - [x] Approval to proceed to Phase 2
 
 ### Phase 1 Exit Criteria
-- [ ] All Phase 1 tasks completed
-- [ ] `CommentAttachment` dataclass compiles without errors
-- [ ] `FormatterConfig` has new fields with defaults
-- [ ] `FormattingContext.metadata` is initialized in `__post_init__`
-- [ ] `_build_comment_attachment_map()` stub exists and returns empty dict
-- [ ] Engine passes `metadata` to at least one rule in Phase 1
-- [ ] No existing tests broken
-- [ ] Conductor approval received
+- [x] All Phase 1 tasks completed
+- [x] `CommentAttachment` dataclass compiles without errors
+- [x] `FormatterConfig` has new fields with defaults
+- [x] `FormattingContext.metadata` is initialized in `__post_init__`
+- [x] `_build_comment_attachment_map()` stub exists and returns empty dict
+- [x] Engine passes `metadata` to at least one rule in Phase 1
+- [x] No existing tests broken
+- [x] Conductor approval received
 
 ## Phase 2: Comment Attachment & Preservation
 - [ ] Task: Add Debug Utilities (Temporary).
