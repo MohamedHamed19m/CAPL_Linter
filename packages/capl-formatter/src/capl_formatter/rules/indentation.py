@@ -30,8 +30,8 @@ class IndentationRule(ASTRule):
             end_row = node.end_point[0]
             
             is_indenter = node.type in [
-                "compound_statement", "variables_block", "struct_specifier", 
-                "enum_specifier", "field_declaration_list", "enumerator_list"
+                "compound_statement", "variables_block", 
+                "field_declaration_list", "enumerator_list"
             ]
             
             # Record depth for the node's start line

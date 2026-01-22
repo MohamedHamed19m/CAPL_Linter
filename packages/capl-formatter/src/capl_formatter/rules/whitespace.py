@@ -21,9 +21,22 @@ class WhitespaceCleanupRule(TextRule):
         for m in re.finditer(r'[ \t]+$', context.source, re.MULTILINE):
             transformations.append(Transformation(m.start(), m.end(), ""))
 
-        # 2. EOF Newline
-        if context.source and not context.source.endswith('\n'):
-            transformations.append(Transformation(len(context.source), len(context.source), "\n"))
+        # 2. EOF Newline: Ensure exactly one newline at the end of the file
+        if context.source:
+            # First, strip all trailing whitespace (including newlines)
+            stripped_source = context.source.rstrip()
+            # Then add exactly one newline
+            target_source = stripped_source + "\n"
+            if context.source != target_source:
+                # We can't easily use a single Transformation if we are stripping multiple chars
+                # So we replace the entire trailing whitespace sequence
+                # Find where the trailing whitespace starts
+                trailing_ws_match = re.search(r'\s+$', context.source)
+                if trailing_ws_match:
+                    transformations.append(Transformation(trailing_ws_match.start(), len(context.source), "\n"))
+                else:
+                    # No trailing whitespace, just add the newline
+                    transformations.append(Transformation(len(context.source), len(context.source), "\n"))
         
         # 3. Collapse excessive blank lines globally (max 1 blank line between top-level items)
         for m in re.finditer(r'\n{3,}', context.source):

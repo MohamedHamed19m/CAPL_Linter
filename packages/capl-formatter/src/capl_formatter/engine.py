@@ -16,6 +16,35 @@ class FormatterEngine:
         """Register a new formatting rule."""
         self.rules.append(rule)
 
+    def add_default_rules(self) -> None:
+        """Register all default formatting rules in the recommended order."""
+        from .rules import (
+            QuoteNormalizationRule,
+            IncludeSortingRule,
+            VariableOrderingRule,
+            CommentReflowRule,
+            IntelligentWrappingRule,
+            BlockExpansionRule,
+            StatementSplitRule,
+            SwitchNormalizationRule,
+            BraceStyleRule,
+            SpacingRule,
+            IndentationRule,
+            WhitespaceCleanupRule,
+        )
+        self.add_rule(QuoteNormalizationRule(self.config))
+        self.add_rule(IncludeSortingRule(self.config))
+        self.add_rule(VariableOrderingRule(self.config))
+        self.add_rule(CommentReflowRule(self.config))
+        self.add_rule(IntelligentWrappingRule(self.config))
+        self.add_rule(BlockExpansionRule(self.config))
+        self.add_rule(StatementSplitRule(self.config))
+        self.add_rule(SwitchNormalizationRule(self.config))
+        self.add_rule(BraceStyleRule(self.config))
+        self.add_rule(SpacingRule(self.config))
+        # Note: IndentationRule and WhitespaceCleanupRule are handled 
+        # explicitly in Phases 2 and 3 of format_string.
+
     def format_string(self, source: str, file_path: str = "") -> FormatResult:
         """Formats a CAPL string through iterative structural passes and final indentation."""
         source = source.replace('\r\n', '\n')
@@ -44,8 +73,14 @@ class FormatterEngine:
                             modified = True
                 if not pass_modified: break
             
-            # Phase 2: Vertical Whitespace Normalization (Run BEFORE Indentation)
+            # Phase 2: Vertical Whitespace Normalization
+            from .rules.whitespace import WhitespaceCleanupRule
+            ws_rule = WhitespaceCleanupRule(self.config)
             current_source = self._cleanup_vertical_whitespace(current_source)
+            ws_transforms = ws_rule.analyze(FormattingContext(source=current_source, file_path=file_path, tree=None))
+            if ws_transforms:
+                current_source = self._apply_transformations(current_source, ws_transforms)
+                modified = True
             
             # Phase 3: Final Indentation Pass
             parse_result = self.parser.parse_string(current_source)
@@ -113,8 +148,8 @@ class FormatterEngine:
         source = re.sub(r'\n\s*\n(\s*[}\]])', r'\n\1', source)
         
         # PASS 3: Remove blank lines after case/default labels
-        source = re.sub(r'(case\s+[^:]+:)\n\n+', r'\1\n', source)
-        source = re.sub(r'(default\s*:)\n\n+', r'\1\n', source)
+        source = re.sub(r'(case\s+[^:]+:)\s*\n\n+', r'\1\n', source)
+        source = re.sub(r'(default\s*:)\s*\n\n+', r'\1\n', source)
         
         # PASS 4: Remove blank lines after commas (ENUM FIX)
         source = re.sub(r',\n\n+', r',\n', source)

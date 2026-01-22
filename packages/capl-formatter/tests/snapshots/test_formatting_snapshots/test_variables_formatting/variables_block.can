@@ -1,0 +1,5 @@
+
+variables {
+  int x;
+  char y[10] = "test";
+}

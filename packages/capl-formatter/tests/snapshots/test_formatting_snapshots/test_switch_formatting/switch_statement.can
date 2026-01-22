@@ -1,0 +1,10 @@
+
+void test(){
+  switch(x){
+    case 1:
+      doThing();
+      break;
+    default:
+      other();
+  }
+}

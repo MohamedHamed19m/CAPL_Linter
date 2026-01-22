@@ -158,20 +158,7 @@ def format(
     fmt_config = FormatConfig(config_file)
     config = fmt_config.to_formatter_config()
     engine = FormatterEngine(config)
-    
-    # Recommended Rule Order
-    engine.add_rule(QuoteNormalizationRule(config))
-    engine.add_rule(IncludeSortingRule(config))
-    engine.add_rule(VariableOrderingRule(config))
-    engine.add_rule(CommentReflowRule(config))
-    engine.add_rule(IntelligentWrappingRule(config))
-    engine.add_rule(BlockExpansionRule(config))
-    engine.add_rule(StatementSplitRule(config))
-    engine.add_rule(SwitchNormalizationRule(config))
-    engine.add_rule(BraceStyleRule(config))
-    engine.add_rule(SpacingRule(config))
-    engine.add_rule(IndentationRule(config))
-    engine.add_rule(WhitespaceCleanupRule(config))
+    engine.add_default_rules()
 
     # 3. Process files
     results = []

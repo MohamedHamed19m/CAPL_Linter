@@ -1,9 +1,9 @@
 [project]
 name = "drift"
 version = "0.1.0"
-description = "Static analysis and linting tools for CAPL (CANoe/CANalyzer Programming Language)"
+description = "Static analysis and linting tools for CAPL (CANoe Programming Language)"
 authors = [
-    { name = "Your Name", email = "your.email@example.com" }
+    { name = "Mohamed Hamed Othman", email = "mohamedahamed1915@gmail.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.10"
@@ -37,6 +37,7 @@ package = true
 dev-dependencies = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+    "pytest-snapshot>=0.9.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
 ]
@@ -91,7 +92,7 @@ disallow_untyped_defs = false
 check_untyped_defs = true
 
 [project.urls]
-Homepage = "https://github.com/yourusername/capl-analyzer"
-Documentation = "https://github.com/yourusername/capl-analyzer#readme"
-Repository = "https://github.com/yourusername/capl-analyzer"
-Issues = "https://github.com/yourusername/capl-analyzer/issues"
+Homepage = "https://github.com/MohamedHamed19m/CAPL_Linter"
+Documentation = "https://github.com/MohamedHamed19m/CAPL_Linter#readme"
+Repository = "https://github.com/MohamedHamed19m/CAPL_Linter"
+Issues = "https://github.com/MohamedHamed19m/CAPL_Linter/issues"
