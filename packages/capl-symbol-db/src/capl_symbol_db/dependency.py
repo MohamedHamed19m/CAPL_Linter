@@ -43,17 +43,19 @@ class DependencyAnalyzer:
                 include_text = source[path_node.start_byte : path_node.end_byte]
                 include_path = include_text.strip('"<>')
                 resolved_path = self._resolve_path(include_path, file_path)
-                
+
                 included_file_id = None
                 if resolved_path:
                     included_file_id = self.db.get_or_create_file_id(resolved_path)
-                
-                include_data.append({
-                    "path_node": path_node,
-                    "include_path": include_path,
-                    "included_file_id": included_file_id,
-                    "is_resolved": resolved_path is not None
-                })
+
+                include_data.append(
+                    {
+                        "path_node": path_node,
+                        "include_path": include_path,
+                        "included_file_id": included_file_id,
+                        "is_resolved": resolved_path is not None,
+                    }
+                )
 
         conn = sqlite3.connect(self.db.db_path)
         try:

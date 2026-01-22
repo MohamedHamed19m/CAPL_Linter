@@ -61,9 +61,10 @@ class FormatConfig:
 
     def to_formatter_config(self) -> Any:
         from capl_formatter.models import FormatterConfig
+
         return FormatterConfig(
             indent_size=self.indent_size,
             line_length=self.line_length,
             brace_style=self.brace_style,
-            quote_style=self.quote_style
+            quote_style=self.quote_style,
         )

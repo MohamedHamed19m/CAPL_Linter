@@ -133,7 +133,9 @@ class CircularIncludeRule(BaseRule):
     rule_id = "W001"
     name = "circular-include"
     severity = Severity.WARNING
-    description = "Circular dependency detected. While allowed in CAPL, this suggests poor file structure."
+    description = (
+        "Circular dependency detected. While allowed in CAPL, this suggests poor file structure."
+    )
 
     def check(self, file_path: Path, db: SymbolDatabase) -> list[InternalIssue]:
         issues = []

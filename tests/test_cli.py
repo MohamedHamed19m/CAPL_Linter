@@ -49,7 +49,7 @@ def test_cli_format_basic(tmp_path):
     result = runner.invoke(app, ["format", str(file_path)])
     assert result.exit_code == 0
     assert "MODIFIED" in result.stdout
-    
+
     # Check if file was actually modified
     formatted_code = file_path.read_text()
     assert "variables {" in formatted_code
@@ -63,9 +63,9 @@ def test_cli_format_check(tmp_path):
 
     # Use --check
     result = runner.invoke(app, ["format", str(file_path), "--check"])
-    assert result.exit_code == 1 # Should fail in check mode if modified
+    assert result.exit_code == 1  # Should fail in check mode if modified
     assert "WOULD BE MODIFIED" in result.stdout
-    
+
     # File should NOT be modified
     assert file_path.read_text() == code
 
@@ -77,8 +77,9 @@ def test_cli_format_json(tmp_path):
 
     result = runner.invoke(app, ["format", str(file_path), "--json"])
     assert result.exit_code == 0
-    
+
     import json
+
     data = json.loads(result.stdout)
     assert data["total_files"] == 1
     assert data["modified_files"] == 1
@@ -99,6 +100,6 @@ indent-size = 4
 
     result = runner.invoke(app, ["format", str(file_path), "--config-file", str(config_path)])
     assert result.exit_code == 0
-    
+
     formatted_code = file_path.read_text()
-    assert "    int x = 1;" in formatted_code # 4 spaces indent
+    assert "    int x = 1;" in formatted_code  # 4 spaces indent

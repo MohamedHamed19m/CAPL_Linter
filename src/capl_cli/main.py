@@ -25,7 +25,7 @@ from capl_formatter.rules import (
     VariableOrderingRule,
     CommentReflowRule,
     IntelligentWrappingRule,
-    QuoteNormalizationRule
+    QuoteNormalizationRule,
 )
 
 app = typer.Typer(help="CAPL Static Analyzer - Analyze CAPL code for issues and dependencies")
@@ -130,9 +130,13 @@ def lint(
 @app.command()
 def format(
     paths: list[Path] = typer.Argument(None, help="Files or directories to format"),
-    check: bool = typer.Option(False, "--check", help="Check for formatting violations without modifying files"),
+    check: bool = typer.Option(
+        False, "--check", help="Check for formatting violations without modifying files"
+    ),
     json_output: bool = typer.Option(False, "--json", help="Output results in JSON format"),
-    config_file: Path = typer.Option(Path(".capl-format.toml"), help="Path to formatter config file"),
+    config_file: Path = typer.Option(
+        Path(".capl-format.toml"), help="Path to formatter config file"
+    ),
 ):
     """Format CAPL files according to opinionated standards."""
     # 1. Collect files
@@ -140,7 +144,7 @@ def format(
     if not paths:
         # Default to current directory if no paths provided
         paths = [Path.cwd()]
-        
+
     for p in paths:
         if p.is_file():
             if p.suffix.lower() in [".can", ".cin"]:
@@ -164,47 +168,45 @@ def format(
     results = []
     modified_count = 0
     error_count = 0
-    
+
     for f in files:
         try:
             source = f.read_text(encoding="utf-8")
             result = engine.format_string(source, str(f))
-            
+
             if result.errors:
                 error_count += 1
             elif result.modified:
                 modified_count += 1
                 if not check:
                     f.write_text(result.source, encoding="utf-8")
-            
-            results.append({
-                "file": str(f),
-                "modified": result.modified,
-                "errors": result.errors
-            })
+
+            results.append({"file": str(f), "modified": result.modified, "errors": result.errors})
         except Exception as e:
             error_count += 1
-            results.append({
-                "file": str(f),
-                "modified": False,
-                "errors": [str(e)]
-            })
+            results.append({"file": str(f), "modified": False, "errors": [str(e)]})
 
     # 4. Report
     if json_output:
         import json
-        typer.echo(json.dumps({
-            "results": results,
-            "total_files": len(files),
-            "modified_files": modified_count,
-            "error_files": error_count
-        }, indent=2))
+
+        typer.echo(
+            json.dumps(
+                {
+                    "results": results,
+                    "total_files": len(files),
+                    "modified_files": modified_count,
+                    "error_files": error_count,
+                },
+                indent=2,
+            )
+        )
     else:
         for r in results:
             status = "MODIFIED" if r["modified"] else "UNCHANGED"
             if check and r["modified"]:
                 status = "WOULD BE MODIFIED"
-            
+
             if r["errors"]:
                 status = "ERROR"
                 typer.echo(f"{status}: {r['file']} - {r['errors'][0]}")
@@ -212,7 +214,9 @@ def format(
                 if r["modified"] or not check:
                     typer.echo(f"{status}: {r['file']}")
 
-        typer.echo(f"\nSummary: {len(files)} files processed. {modified_count} modified, {error_count} errors.")
+        typer.echo(
+            f"\nSummary: {len(files)} files processed. {modified_count} modified, {error_count} errors."
+        )
 
     # 5. Exit code
     if error_count > 0:

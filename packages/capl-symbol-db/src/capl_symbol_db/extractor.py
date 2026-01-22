@@ -163,7 +163,7 @@ class SymbolExtractor:
 
     def _extract_functions(self, root: Node, source: str) -> list[SymbolInfo]:
         symbols = []
-        
+
         # 1. Extract definitions
         query_def = "(function_definition) @func"
         matches_def = self.query_helper.query(query_def, root)
@@ -184,7 +184,7 @@ class SymbolExtractor:
                     has_body=True,
                 )
             )
-            
+
         # 2. Extract prototypes (forward declarations)
         query_decl = "(declaration) @decl"
         matches_decl = self.query_helper.query(query_decl, root)
@@ -203,7 +203,7 @@ class SymbolExtractor:
                         has_body=False,
                     )
                 )
-                
+
         return symbols
 
     def _extract_variables_block(self, root: Node, source: str) -> list[SymbolInfo]:

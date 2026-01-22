@@ -28,5 +28,5 @@ __all__ = [
     "CommentReflowRule",
     "CommentAlignmentRule",
     "IntelligentWrappingRule",
-    "QuoteNormalizationRule"
+    "QuoteNormalizationRule",
 ]
