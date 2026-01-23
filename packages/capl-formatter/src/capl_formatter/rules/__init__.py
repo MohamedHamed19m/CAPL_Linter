@@ -10,6 +10,7 @@ from .comments import CommentReflowRule, CommentAlignmentRule
 from .wrapping import IntelligentWrappingRule
 from .quotes import QuoteNormalizationRule
 from .vertical_spacing import VerticalSpacingRule
+from .top_level_ordering import TopLevelOrderingRule
 
 __all__ = [
     "FormattingRule",
@@ -31,4 +32,5 @@ __all__ = [
     "IntelligentWrappingRule",
     "QuoteNormalizationRule",
     "VerticalSpacingRule",
+    "TopLevelOrderingRule",
 ]

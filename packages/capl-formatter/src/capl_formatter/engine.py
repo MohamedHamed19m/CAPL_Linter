@@ -1,9 +1,12 @@
-from typing import List, Union, Dict, Any
+from typing import List, Union, Dict, Any, Optional
 from pathlib import Path
 import re
 from .models import FormatterConfig, FormatResult, FormatResults, CommentAttachment
-from .rules.base import FormattingRule, ASTRule, TextRule, FormattingContext, Transformation
+from .rules.base import ASTRule, TextRule, FormattingContext, Transformation
 from capl_tree_sitter.parser import CAPLParser
+
+# Type alias for formatting rules
+FormattingRule = Union[ASTRule, TextRule]
 
 
 class FormatterEngine:
@@ -152,6 +155,28 @@ class FormatterEngine:
                         current_source = new_source
                         modified = True
 
+            # Phase 5: Top-Level Reordering (The "Grand Finale")
+            from .rules.top_level_ordering import TopLevelOrderingRule
+
+            ordering_rule = TopLevelOrderingRule(self.config)
+            # Re-parse to ensure we have the perfectly formatted blocks from Phase 4
+            parse_result_final = self.parser.parse_string(current_source)
+            context_ordering = FormattingContext(
+                source=current_source,
+                file_path=file_path,
+                tree=parse_result_final.tree,
+                metadata={
+                    "comment_attachments": self._build_comment_attachment_map(
+                        current_source, parse_result_final.tree
+                    )
+                },
+            )
+
+            ordering_transforms = ordering_rule.analyze(context_ordering)
+            if ordering_transforms:
+                current_source = self._apply_transformations(current_source, ordering_transforms)
+                modified = True
+
         except Exception as e:
             import traceback
 
@@ -266,7 +291,7 @@ class FormatterEngine:
             return source
 
     def _cleanup_vertical_whitespace(
-        self, source: str, comment_map: Dict[int, CommentAttachment] = None
+        self, source: str, comment_map: Optional[Dict[int, CommentAttachment]] = None
     ) -> str:
         """Aggressively removes excessive blank lines BEFORE indentation."""
 

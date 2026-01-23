@@ -1,0 +1,27 @@
+includes {
+  #include "Settings.cin"
+}
+
+variables {
+  int x;
+}
+
+on message CAN1.MsgA {
+  // Handle MsgA
+}
+
+on start {
+  write("Start");
+}
+
+on stopMeasurement {
+  // Stop
+}
+
+void FunctionA() {
+  // A implementation
+}
+
+void FunctionB() {
+  // B implementation
+}

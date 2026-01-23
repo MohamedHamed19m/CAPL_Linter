@@ -27,7 +27,11 @@ def test_golden_file(test_name):
     expected_source = expected_file.read_text(encoding="utf-8")
 
     # Format
-    engine = FormatterEngine(FormatterConfig())
+    config = FormatterConfig()
+    if test_name == "reorder_complex":
+        config.reorder_top_level = True
+
+    engine = FormatterEngine(config)
     engine.add_default_rules()
     result = engine.format_string(input_source)
 

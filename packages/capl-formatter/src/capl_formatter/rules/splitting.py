@@ -85,22 +85,32 @@ class StatementSplitRule(ASTRule):
                                     if not (
                                         prev_child.type == "}" and child.type in ["else", "while"]
                                     ):
-                                        # Skip spaces/newlines before the new statement
-                                        pos = child.start_byte - 1
-                                        while pos >= 0 and context.source[pos] in [
-                                            " ",
-                                            "\t",
-                                            "\n",
-                                            "\r",
-                                        ]:
-                                            pos -= 1
-                                        transformations.append(
-                                            Transformation(
-                                                start_byte=pos + 1,
-                                                end_byte=child.start_byte,
-                                                new_content="\n",
+                                        # Fix: Don't split 'on message' which parses as declaration + expression_statement
+                                        is_on_message = False
+                                        if prev_child.type == "declaration":
+                                            prev_text = context.source[
+                                                prev_child.start_byte : prev_child.end_byte
+                                            ]
+                                            if "on" in prev_text and "message" in prev_text:
+                                                is_on_message = True
+
+                                        if not is_on_message:
+                                            # Skip spaces/newlines before the new statement
+                                            pos = child.start_byte - 1
+                                            while pos >= 0 and context.source[pos] in [
+                                                " ",
+                                                "\t",
+                                                "\n",
+                                                "\r",
+                                            ]:
+                                                pos -= 1
+                                            transformations.append(
+                                                Transformation(
+                                                    start_byte=pos + 1,
+                                                    end_byte=child.start_byte,
+                                                    new_content="\n",
+                                                )
                                             )
-                                        )
 
                     prev_child = child
 

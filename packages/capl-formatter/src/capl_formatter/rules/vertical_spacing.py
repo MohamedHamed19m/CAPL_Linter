@@ -63,19 +63,25 @@ class VerticalSpacingRule(ASTRule):
                 if open_brace:
                     first_child = None
                     for child in node.children:
-                        if child.start_byte >= open_brace.end_byte and child.type not in ["{", "}"] and child.is_named:
+                        if (
+                            child.start_byte >= open_brace.end_byte
+                            and child.type not in ["{", "}"]
+                            and child.is_named
+                        ):
                             first_child = child
                             break
-                    
+
                     if first_child:
                         # If row diff > 1, there is a blank line
                         if first_child.start_point[0] > open_brace.end_point[0] + 1:
-                            transformations.append(Transformation(
-                                start_byte=open_brace.end_byte,
-                                end_byte=first_child.start_byte,
-                                new_content="\n",
-                                priority=10
-                            ))
+                            transformations.append(
+                                Transformation(
+                                    start_byte=open_brace.end_byte,
+                                    end_byte=first_child.start_byte,
+                                    new_content="\n",
+                                    priority=10,
+                                )
+                            )
 
                 for child in node.children:
                     # Skip boundary tokens
@@ -91,12 +97,14 @@ class VerticalSpacingRule(ASTRule):
                         if prev_child:
                             # If row diff > 1, there is a blank line
                             if child.start_point[0] > prev_child.end_point[0] + 1:
-                                transformations.append(Transformation(
-                                    start_byte=prev_child.end_byte,
-                                    end_byte=child.start_byte,
-                                    new_content="\n",
-                                    priority=5
-                                ))
+                                transformations.append(
+                                    Transformation(
+                                        start_byte=prev_child.end_byte,
+                                        end_byte=child.start_byte,
+                                        new_content="\n",
+                                        priority=5,
+                                    )
+                                )
 
                     prev_child = child
 
@@ -105,18 +113,24 @@ class VerticalSpacingRule(ASTRule):
                 if close_brace:
                     last_child = None
                     for child in reversed(node.children):
-                        if child.end_byte <= close_brace.start_byte and child.type not in ["{", "}"] and child.is_named:
+                        if (
+                            child.end_byte <= close_brace.start_byte
+                            and child.type not in ["{", "}"]
+                            and child.is_named
+                        ):
                             last_child = child
                             break
-                    
+
                     if last_child:
                         if close_brace.start_point[0] > last_child.end_point[0] + 1:
-                            transformations.append(Transformation(
-                                start_byte=last_child.end_byte,
-                                end_byte=close_brace.start_byte,
-                                new_content="\n",
-                                priority=10
-                            ))
+                            transformations.append(
+                                Transformation(
+                                    start_byte=last_child.end_byte,
+                                    end_byte=close_brace.start_byte,
+                                    new_content="\n",
+                                    priority=10,
+                                )
+                            )
 
             for child in node.children:
                 traverse(child)

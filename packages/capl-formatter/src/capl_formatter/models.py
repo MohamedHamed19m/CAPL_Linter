@@ -15,6 +15,8 @@ class FormatterConfig:
     inline_comment_column: int = 40
     reflow_comments: bool = True
     preserve_comment_proximity: bool = True
+    # Top-level ordering configuration
+    reorder_top_level: bool = False
 
 
 @dataclass
