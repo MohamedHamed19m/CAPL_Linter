@@ -11,6 +11,8 @@
 | **Type Rules** | `packages/capl-linter/src/capl_linter/rules/type_rules.py` |
 | **Variable Rules** | `packages/capl-linter/src/capl_linter/rules/variable_rules.py` |
 | **Semantic Rules** | `packages/capl-linter/src/capl_linter/rules/semantic_rules.py` |
+| **Formatter Engine** | `packages/capl-formatter/src/capl_formatter/engine.py` |
+| **Ordering Rule** | `packages/capl-formatter/src/capl_formatter/rules/top_level_ordering.py` |
 | **Database Schema** | `packages/capl-symbol-db/src/capl_symbol_db/database.py` |
 | **Dependency Analysis** | `packages/capl-symbol-db/src/capl_symbol_db/dependency.py` |
 | **Symbol Extraction** | `packages/capl-symbol-db/src/capl_symbol_db/extractor.py` |
@@ -38,6 +40,10 @@ The codebase is split into independent library packages and a root CLI package, 
     *   `builtins.py`: List of CAPL standard library functions and keywords.
     *   `autofix.py`: `AutoFixEngine` delegates to rule-specific `fix()` methods.
     *   `rules/`: Individual rule implementations categorized into `syntax`, `type`, `variable`, and `semantic` rules.
+*   **`capl-formatter`**: Opinionated code formatter.
+    *   `engine.py`: `FormatterEngine` manages the 5-phase transformation pipeline (Structure -> Whitespace -> Indentation -> Comments -> Reordering).
+    *   `rules/`: Specialized transformation rules (e.g., `VerticalSpacingRule`, `TopLevelOrderingRule`, `IndentationRule`).
+    *   `models.py`: Configuration and transformation data structures.
 
 ### 2. CLI Package (Root)
 *   **`src/capl_cli/`**: The `drift` package.

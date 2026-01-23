@@ -25,7 +25,15 @@ The `drift format` command provides highly stable, idempotent formatting for CAP
 - **K&R Braces**: Enforces opening braces on the same line.
 - **Intelligent Spacing**: Standardizes operators, keywords, and punctuation.
 - **Precision Indentation**: Direct calculation of nesting depth from the AST.
-- **Vertical Cleanup**: Removes redundant blank lines and ensures consistent block spacing.
+- **Smart Vertical Spacing**: 
+    - **Setup vs. Logic**: Compresses variable declarations at the start of functions while preserving readability in logic sections.
+    - **Global Preservation**: Respects grouping in global `variables` blocks.
+- **Canonical Ordering** (Optional): Automatically reorders top-level blocks to a standard hierarchy:
+    1. `includes`
+    2. `variables`
+    3. `testcase` definitions
+    4. `on ...` event handlers (Alphabetical)
+    5. Helper functions (Alphabetical)
 
 ```bash
 # Format a file in-place
