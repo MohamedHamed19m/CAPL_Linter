@@ -1,6 +1,6 @@
 # CAPL Analyzer Architecture & Integration Map
 
-This document defines the "Neutral Fact" architecture of the CAPL Analyzer. Use this as a reference to identify the "next step" and understand the impact of changes across the workspace.
+This document defines the "Neutral Fact" architecture of the CAPL Analyzer. Use this as a reference to identify the "next step" and understand the impact of changes across the system.
 
 ## 1. System Overview & Data Flow
 
@@ -8,44 +8,46 @@ The system operates on a "Storage of Facts, Judgment by Linter" principle.
 
 ```mermaid
 graph TD
-    A[Source File .can/.cin] --> B[capl-tree-sitter]
-    B -->|AST| C[capl-symbol-db: Extractor]
-    C -->|Neutral Dataclasses| D[capl-symbol-db: SQLite]
-    D -->|Neutral Symbols| E[capl-linter-engine: Engine]
-    E -->|Judgment Logic| F[capl-linter-engine: Issues]
+    A[Source File .can/.cin] --> B[capl_tree_sitter]
+    B -->|AST| C[capl_symbol_db: Extractor]
+    C -->|Neutral Dataclasses| D[capl_symbol_db: SQLite]
+    D -->|Neutral Symbols| E[capl_linter: Engine]
+    E -->|Judgment Logic| F[capl_linter: Issues]
     B -.->|Re-parse for Syntax| E
     F -->|CLI Output| G[User/JSON]
-    F -->|Fix Engine| H[capl-linter-engine: AutoFix]
+    F -->|Fix Engine| H[capl_linter: AutoFix]
     H -->|Modified Source| A
 ```
 
-## 2. Package Responsibilities
+## 2. Module Responsibilities
 
-### 📦 capl-tree-sitter (The "Eyes")
+The codebase is organized as a single package (`capllint`) with internal modules in `src/`.
+
+### 📦 capl_tree_sitter (The "Eyes")
 *   **Role**: Raw parsing and AST traversal.
 *   **Source of Truth**: `tree-sitter-c` grammar + `CAPLPatterns` recognition.
 *   **Constraint**: Stateless. Provides queries to find syntax patterns (like `extern` or `->`).
 
-### 📦 capl-symbol-db (The "Memory")
+### 📦 capl_symbol_db (The "Memory")
 *   **Role**: Persistent storage of **neutral metadata**.
 *   **Neutral Facts Only**: It stores *what exists* (e.g., `has_body: false`, `param_count: 2`). It **never** stores judgments (e.g., no `is_forbidden` flags).
 *   **Key Logic**: 
     *   `Extractor`: Populates the DB with raw symbol attributes.
     *   `XRef`: Maps usages vs. definitions for semantic analysis.
 
-### 📦 capl-linter-engine (The "Brain")
+### 📦 capl_linter (The "Brain")
 *   **Role**: The "Judge" of the system.
 *   **Two-Pronged Analysis**:
-    1.  **Syntax Rules**: Re-parse the AST via `capl-tree-sitter` to find forbidden patterns (e.g., `extern`).
+    1.  **Syntax Rules**: Re-parse the AST via `capl_tree_sitter` to find forbidden patterns (e.g., `extern`).
     2.  **Semantic Rules**: Query the `SymbolDatabase` for neutral facts that violate CAPL constraints (e.g., finding functions where `has_body: false`).
 *   **Source of Truth**: The `RuleRegistry` (E###, W###, S###).
 
-### 📦 capl-cli (The "Voice")
-*   **Role**: Orchestration, `.capl-lint.toml` configuration, and Pydantic serialization.
+### 📦 capl_cli (The "Voice")
+*   **Role**: Orchestration, `.capl-lint.toml` configuration, and CLI entry point.
 
-### 📦 capl-formatter (The "Artisan")
+### 📦 capl_formatter (The "Artisan")
 *   **Role**: Structural transformation and style enforcement.
-*   **Strategy**: Two-phase transformation (Structural + Indentation).
+*   **Strategy**: Multi-phase transformation (Structural + Indentation).
 *   **Constraint**: Idempotent rules. Re-parses the source after each rule application to maintain AST accuracy.
 
 ---
@@ -76,15 +78,7 @@ To scale without constant refactoring, we follow these data rules:
 
 To stop refactoring and finish the package, the following must be stable:
 
-- [x] **Phase 5: AST-Based Formatter**: Implement `capl-formatter` with character-based atomic transformations.
-- [ ] **Phase 6: Project Analysis**: Implement recursive `#include` visibility for semantic rules.
+- [x] **Consolidation**: Project moved from workspace to single package `capllint`.
+- [x] **Testing Integration**: Linter now uses the same Snapshot/Golden testing as Formatter.
 - [ ] **Phase 7: Precision Refinements**: Final stability pass for complex CAPL structures (multi-dim arrays, event handlers).
 - [ ] **CLI Stability**: Support for `--format json` vs `--format text` using Pydantic.
-
----
-
-## 6. Next Implementation Steps
-
-1.  **Atomic DB Migration**: Add `param_count` and `has_body` to the `symbols` table.
-2.  **Rule Migration**: Create `NoExternRule`, `PointerParameterRule`, and `ArrowOperatorRule` in the linter using re-parsing logic.
-3.  **Cross-File Queries**: Implement `get_visible_symbols()` in the database to support semantic analysis across files.

@@ -45,14 +45,14 @@ Any new rule or bug fix MUST be accompanied by both snapshot and golden file tes
 
 ### 1. Snapshot Testing (Detection)
 Snapshots track exactly what issues are reported for a given source snippet.
-*   **File**: `tests_linter/test_linter_snapshots.py`
+*   **File**: `src/capl_linter/tests_linter/test_linter_snapshots.py`
 *   **Command**: `uv run pytest src/capl_linter/tests_linter/test_linter_snapshots.py --snapshot-update`
 
 ### 2. Golden File Testing (Correction)
 Golden files verify that auto-fixes produce the exact desired source code.
 *   **Workflow**:
-    1.  Place messy code in `fixtures/input/<rule_name>.can`.
-    2.  Place expected fixed code in `fixtures/expected/<rule_name>.can`.
+    1.  Place messy code in `src/capl_linter/tests_linter/fixtures/input/<rule_name>.can`.
+    2.  Place expected fixed code in `src/capl_linter/tests_linter/fixtures/expected/<rule_name>.can`.
 *   **Note**: Linter golden tests automatically run a `FormatterEngine` pass after fixes to ensure high-quality output style.
 
 ## Troubleshooting & Debugging Workflow
