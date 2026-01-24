@@ -5,25 +5,80 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+![Package Overview](./docs/package_desc.png)
+
 ## 🚀 Features
 
-- **Dependency Analysis**: Track `#include` relationships and build dependency graphs
-- **Symbol Extraction**: Extract functions, variables, event handlers, and CAPL-specific constructs
-- **Cross-Reference System**: Find all references to any symbol across your codebase
-- **Static Analysis / Linter**: Detect common issues and enforce coding standards
+- **Code Formatting**: Professional AST-based formatting (Ruff/Black style) for CAPL files.
+- **Auto-Fix System**: Automatically resolves common linting issues with rule-specific fix logic.
+- **Dependency Analysis**: Track `#include` relationships and build transitive visibility graphs.
+- **Symbol Extraction**: Extract functions, parameters, event handlers, and enum members.
+- **Cross-Reference System**: Find all references to any symbol across your codebase.
+- **Static Analysis / Linter**: Detect common issues and enforce coding standards across multiple files.
+- **Configuration Support**: Customize behavior via `.capl-lint.toml`.
+
+## 💅 Formatting
+
+The `drift format` command provides highly stable, idempotent formatting for CAPL, inspired by modern tools like Ruff and Black.
+
+### Core Features
+
+- **AST-Based Precision**: Uses `tree-sitter-c` to understand code structure, ensuring formatting never breaks logic.
+- **Context-Aware Vertical Spacing**: 
+    - **Setup Zone**: Automatically compresses local variable declarations at the start of blocks for a clean "header" look.
+    - **Logic Zone**: Preserves developer-intended blank lines between functional statements.
+    - **Boundary Cleanup**: Removes redundant blank lines at the start and end of blocks.
+- **Top-Level Reordering** (Optional): Enforces a standardized architectural hierarchy:
+    1. `includes` blocks.
+    2. `variables` blocks (Global scope).
+    3. `testcase` definitions (preserving relative order).
+    4. Event handlers (`on message`, `on start`, etc.) sorted alphabetically.
+    5. User functions sorted alphabetically.
+- **Modern Standards**: Enforces K&R brace style, intelligent operator spacing, and consistent quote usage.
+
+### Usage
+
+```bash
+# Format specific files or directories in-place
+uv run drift format MyNode.can src/
+
+# Check for violations without modifying (CI mode)
+uv run drift format --check .
+
+# Output results in JSON format
+uv run drift format --json .
+```
+
+### Configuration
+
+Customize the formatter via `.capl-format.toml`:
+
+```toml
+[tool.capl-format]
+indent-size = 2
+line-length = 100
+brace-style = "k&r"
+quote-style = "double"
+reorder-top-level = true  # Standardize architectural order
+```
 
 ## 📋 What Can It Detect?
 
 ### Errors
-- ❌ Variables declared outside `variables {}` block (CAPL syntax error)
-- ❌ Undefined symbol references
-- ❌ Duplicate event handlers
+- ❌ Variables declared outside `variables {}` block
+- ❌ Local variables declared after executable statements (mid-block)
+- ❌ Undefined symbol references (with transitive include support and CAPL built-ins)
+- ❌ Duplicate function definitions (across project)
 - ❌ Circular include dependencies
+- ❌ Missing `enum` or `struct` keywords in declarations
+- ❌ Forbidden syntax: function forward declarations
+- ❌ Forbidden syntax: `extern` keyword usage
+- ❌ Forbidden syntax: arrow operator `->` (must use dot `.`)
+- ❌ Forbidden syntax: struct pointers in parameters
 
 ### Warnings
 - ⚠️ Unused variables, functions, messages, and timers
 - ⚠️ Timers set without handlers
-- ⚠️ Timer handlers that don't reset timers
 
 ### Style Issues
 - 💅 Naming conventions (global variables should start with `g`, messages with `msg`, timers with `t`)
@@ -33,147 +88,56 @@
 
 ### Using UV (Recommended)
 
-```bash
-# Install UV if you haven't already
-curl -LsSf https://astral.sh/uv/install.sh | sh
+This project is managed as a [uv workspace](https://docs.astral.sh/uv/concepts/workspaces/).
 
+```bash
 # Clone the repository
 git clone https://github.com/yourusername/capl-analyzer.git
 cd capl-analyzer
 
-# Create virtual environment and install
-uv venv
-uv pip install -e .
-```
+# Sync the workspace (creates venv and installs all packages)
+uv sync
 
-### Using pip
-
-```bash
-pip install -e .
-```
-
-## 📖 Quick Start
-
-### 1. Analyze Dependencies
-
-```python
-from capl_analyzer import CAPLDependencyAnalyzer
-
-analyzer = CAPLDependencyAnalyzer(
-    db_path="aic.db",
-    search_paths=["./includes", "./common"]
-)
-
-# Analyze a single file
-analyzer.analyze_file("MyNode.can")
-
-# Get dependencies
-deps = analyzer.get_dependencies("MyNode.can", recursive=True)
-print(f"Dependencies: {deps}")
-
-# Generate dependency graph
-analyzer.generate_dependency_graph("deps.dot")
-```
-
-### 2. Extract Symbols
-
-```python
-from capl_analyzer import CAPLSymbolExtractor
-
-extractor = CAPLSymbolExtractor()
-
-# Extract and store symbols
-extractor.store_symbols("MyNode.can")
-
-# List symbols in file
-symbols = extractor.list_symbols_in_file("MyNode.can")
-for name, sym_type, line, sig in symbols:
-    print(f"{line:4d} | {sym_type:15s} | {name}")
-```
-
-### 3. Find All References
-
-```python
-from capl_analyzer import CAPLCrossReferenceBuilder
-
-xref = CAPLCrossReferenceBuilder()
-
-# Build cross-references
-xref.analyze_file_references("MyNode.can")
-
-# Find all references to a symbol
-refs = xref.find_all_references("msgEngine")
-for ref in refs:
-    print(f"{ref.file_path}:{ref.line_number} [{ref.reference_type}]")
-
-# Get call graph
-graph = xref.get_call_graph("UpdateEngine")
-print("Called by:", graph['callers'])
-print("Calls:", graph['callees'])
-```
-
-### 4. Run Linter
-
-```python
-from capl_analyzer import CAPLLinter
-
-linter = CAPLLinter()
-
-# Analyze a file
-issues = linter.analyze_file("MyNode.can")
-
-# Generate report
-print(linter.generate_report(issues))
-```
-
-Or use the command-line interface:
-
-```bash
-# Lint a single file
-capl-lint MyNode.can
-
-# Lint entire project
-capl-lint --project
-
-# Filter by severity
-capl-lint --severity warning MyNode.can
+# Run the linter
+uv run drift lint MyNode.can
 ```
 
 ## 🏗️ Project Structure
 
+The project is organized into a modular monorepo structure:
+
+- **`drift`** (Root): User-facing CLI built with `typer`.
+- **`packages/capl-tree-sitter`**: Core CAPL parsing using tree-sitter.
+- **`packages/capl-symbol-db`**: Symbol extraction and persistent storage (SQLite).
+- **`packages/capl-linter`**: Analysis engine and auto-fix logic.
+- **`packages/capl-formatter`**: AST-based code formatter.
+
 ```
 capl-analyzer/
+├── packages/
+│   ├── capl-tree-sitter/
+│   ├── capl-symbol-db/
+│   ├── capl-linter/
+│   └── capl-formatter/
 ├── src/
-│   └── capl_analyzer/
-│       ├── __init__.py
-│       ├── dependency_analyzer.py
-│       ├── symbol_extractor.py
-│       ├── cross_reference.py
-│       └── linter.py
-├── tests/
-│   ├── test_dependency_analyzer.py
-│   ├── test_symbol_extractor.py
-│   ├── test_cross_reference.py
-│   └── test_linter.py
+│   └── capl_cli/          # CLI source
 ├── examples/
-│   ├── MyNode.can
-│   └── ProblematicCode.can
 ├── docs/
-├── pyproject.toml
+├── pyproject.toml         # Workspace configuration
 └── README.md
 ```
 
 ## 🧪 Running Tests
 
 ```bash
-# Install dev dependencies
-uv pip install -e ".[dev]"
+# Run all tests across the entire workspace
+uv run --workspace pytest
 
-# Run all tests
-pytest
+# Run tests for a specific package
+uv run --package capl-linter pytest
 
-# Run with coverage
-pytest --cov=capl_analyzer --cov-report=html
+# Run with coverage aggregated across the workspace
+uv run --workspace pytest --cov-report=html
 ```
 
 ## 🤝 Contributing
@@ -206,6 +170,8 @@ For detailed documentation, see the [docs](./docs) directory or visit the [wiki]
 - [ ] Add auto-fix capabilities for style issues
 - [ ] Build VS Code extension
 - [ ] Add configuration file support (.capl-lint.toml)
+- [ ] **Formatter**: Implement advanced "Chop-down" line wrapping for complex arguments
+- [ ] **Formatter**: Enforce semantic style (e.g., standardizing Hex casing `0x1A`)
 
 ## 💬 Support
 

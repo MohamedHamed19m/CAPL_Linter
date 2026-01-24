@@ -1,0 +1,84 @@
+/* @!Encoding:65001*/
+
+// Test 1: Switch statement formatting (case labels)
+
+void test_switch(){
+  switch (color){
+    case RED:
+      x=1;
+      break;
+    case GREEN:
+      x=2;
+      break;
+    default:
+      x=3;
+  }
+}
+
+// Test 2: Struct formatting (single-line to multi-line)
+
+struct Point{
+    int x;
+    int y;
+  }
+
+struct Complex{
+  int a;
+  int b;
+  int c;
+  int d;
+}
+
+// Test 3: Enum formatting (single-line to multi-line)
+
+enum Color{
+    RED,
+    GREEN,
+    BLUE
+  }
+
+enum Status{
+  IDLE, RUNNING, STOPPED, ERROR
+}
+
+// Test 4: Operator spacing (fix parentheses)
+
+void empty_parens(){
+  int x;
+}
+
+void sparse_parens(){
+  int y;
+}
+
+void mixed_spacing(int x , int y){
+  return x + y;
+}
+
+// Combined test: all issues together
+
+variables {
+  struct Data{
+      int id;
+      char name[20];
+      float value;
+    }
+
+  enum State{
+    INIT, READY, DONE
+  }
+}
+
+void complex_test(int param){
+  switch (state){
+    case INIT:
+      setup();
+      break;
+    case READY:
+      process();
+      break;
+    default:
+      cleanup();
+  }
+}
+

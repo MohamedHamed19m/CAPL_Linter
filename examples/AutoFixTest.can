@@ -1,0 +1,27 @@
+/*@@var:*/
+variables {
+  int gCounter;
+}
+/*@@end*/
+
+// This should be moved to variables block
+int badVar = 10;
+
+// This should be removed (function declaration)
+void MyFunc(int x);
+
+void MyFunc(int x) {
+  write("Start");
+  
+  // This should be moved to start of function
+  int localVal = 5;
+  
+  // This should have enum keyword added
+  STATUS status;
+}
+
+// This should be moved to variables block
+enum STATUS {
+  OK,
+  ERROR
+};
