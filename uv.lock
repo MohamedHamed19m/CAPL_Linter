@@ -2,15 +2,6 @@ version = 1
 revision = 3
 requires-python = ">=3.10"
 
-[manifest]
-members = [
-    "capl-formatter",
-    "capl-linter",
-    "capl-symbol-db",
-    "capl-tree-sitter",
-    "drift",
-]
-
 [[package]]
 name = "annotated-types"
 version = "0.7.0"
@@ -30,55 +21,44 @@ wheels = [
 ]
 
 [[package]]
-name = "capl-formatter"
+name = "capllint"
 version = "0.1.0"
-source = { editable = "packages/capl-formatter" }
+source = { editable = "." }
 dependencies = [
-    { name = "capl-tree-sitter" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "capl-tree-sitter", editable = "packages/capl-tree-sitter" }]
-
-[[package]]
-name = "capl-linter"
-version = "0.1.0"
-source = { editable = "packages/capl-linter" }
-dependencies = [
-    { name = "capl-symbol-db" },
-    { name = "capl-tree-sitter" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "capl-symbol-db", editable = "packages/capl-symbol-db" },
-    { name = "capl-tree-sitter", editable = "packages/capl-tree-sitter" },
-]
-
-[[package]]
-name = "capl-symbol-db"
-version = "0.1.0"
-source = { editable = "packages/capl-symbol-db" }
-dependencies = [
-    { name = "capl-tree-sitter" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "capl-tree-sitter", editable = "packages/capl-tree-sitter" }]
-
-[[package]]
-name = "capl-tree-sitter"
-version = "0.1.0"
-source = { editable = "packages/capl-tree-sitter" }
-dependencies = [
+    { name = "pydantic" },
+    { name = "rich" },
     { name = "tree-sitter" },
     { name = "tree-sitter-c" },
+    { name = "typer" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "commitizen" },
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-snapshot" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "rich", specifier = ">=13.0.0" },
     { name = "tree-sitter", specifier = ">=0.21.0" },
     { name = "tree-sitter-c", specifier = ">=0.21.0" },
+    { name = "typer", specifier = ">=0.9.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "commitizen", specifier = ">=4.12.1" },
+    { name = "mypy", specifier = ">=1.0.0" },
+    { name = "pytest", specifier = ">=7.0.0" },
+    { name = "pytest-cov", specifier = ">=4.0.0" },
+    { name = "pytest-snapshot", specifier = ">=0.9.0" },
+    { name = "ruff", specifier = ">=0.1.0" },
 ]
 
 [[package]]
@@ -338,49 +318,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/49/85/12f0a49a7c4ffb70572b6c2ef13c90c88fd190debda93b23f026b25f9634/deprecated-1.3.1.tar.gz", hash = "sha256:b1b50e0ff0c1fddaa5708a2c6b0a6588bb09b892825ab2b214ac9ea9d92a5223", size = 2932523, upload-time = "2025-10-30T08:19:02.757Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/84/d0/205d54408c08b13550c733c4b85429e7ead111c7f0014309637425520a9a/deprecated-1.3.1-py2.py3-none-any.whl", hash = "sha256:597bfef186b6f60181535a29fbe44865ce137a5079f295b479886c82729d5f3f", size = 11298, upload-time = "2025-10-30T08:19:00.758Z" },
-]
-
-[[package]]
-name = "drift"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "capl-formatter" },
-    { name = "capl-linter" },
-    { name = "capl-symbol-db" },
-    { name = "capl-tree-sitter" },
-    { name = "pydantic" },
-    { name = "typer" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "commitizen" },
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-snapshot" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "capl-formatter", editable = "packages/capl-formatter" },
-    { name = "capl-linter", editable = "packages/capl-linter" },
-    { name = "capl-symbol-db", editable = "packages/capl-symbol-db" },
-    { name = "capl-tree-sitter", editable = "packages/capl-tree-sitter" },
-    { name = "pydantic", specifier = ">=2.0.0" },
-    { name = "typer", specifier = ">=0.9.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "commitizen", specifier = ">=4.12.1" },
-    { name = "mypy", specifier = ">=1.0.0" },
-    { name = "pytest", specifier = ">=7.0.0" },
-    { name = "pytest-cov", specifier = ">=4.0.0" },
-    { name = "pytest-snapshot", specifier = ">=0.9.0" },
-    { name = "ruff", specifier = ">=0.1.0" },
 ]
 
 [[package]]

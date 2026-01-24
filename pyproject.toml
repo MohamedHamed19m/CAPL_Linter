@@ -21,12 +21,11 @@ classifiers = [
 ]
 
 dependencies = [
-    "capl-tree-sitter>=0.1.0",
-    "capl-symbol-db>=0.1.0",
-    "capl-linter-engine>=0.1.0",
-    "capl-formatter>=0.1.0",
     "pydantic>=2.0.0",
     "typer>=0.9.0",
+    "tree-sitter>=0.21.0",
+    "tree-sitter-c>=0.21.0",
+    "rich>=13.0.0",
 ]
 
 [project.scripts]
@@ -43,25 +42,23 @@ dev-dependencies = [
     "commitizen>=4.12.1",
 ]
 
-[tool.uv.workspace]
-members = ["packages/*"]
-
-[tool.uv.sources]
-capl-tree-sitter = { workspace = true }
-capl-symbol-db = { workspace = true }
-capl-linter-engine = { workspace = true }
-capl-formatter = { workspace = true }
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/capl_cli"]
+packages = [
+    "src/capl_cli",
+    "src/capl_formatter",
+    "src/capl_linter",
+    "src/capl_symbol_db",
+    "src/capl_tree_sitter",
+]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "packages/*/tests_*"]
+testpaths = ["tests", "src/*/tests_*"]
 python_files = ["test_*.py"]
+pythonpath = ["src"]
 addopts = [
     "--verbose",
     "--cov-report=term-missing",
@@ -98,10 +95,6 @@ version = "0.1.0"
 tag_format = "v$version"
 version_files = [
     "pyproject.toml:version",
-    "packages/capl-tree-sitter/pyproject.toml:version",
-    "packages/capl-symbol-db/pyproject.toml:version",
-    "packages/capl-linter-engine/pyproject.toml:version",
-    "packages/capl-formatter/pyproject.toml:version",
 ]
 
 [project.urls]

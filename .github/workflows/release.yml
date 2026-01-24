@@ -23,12 +23,8 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
-      - name: Build All Packages
+      - name: Build Package
         run: |
-          uv build --package capl-tree-sitter
-          uv build --package capl-symbol-db
-          uv build --package capl-linter-engine
-          uv build --package capl-formatter
           uv build --package capllint
 
       - name: Publish to PyPI
