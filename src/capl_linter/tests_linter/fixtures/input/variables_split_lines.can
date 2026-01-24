@@ -1,0 +1,9 @@
+int gVar1;
+
+variables
+{
+  int existingVar;
+}
+
+void main() {
+}

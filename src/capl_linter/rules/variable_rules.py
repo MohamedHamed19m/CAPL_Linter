@@ -67,19 +67,47 @@ class VariableOutsideBlockRule(BaseRule):
         return "\n".join(lines)
 
     def _find_variables_block_range(self, lines: list[str]):
-        start = None
-        brace_count = 0
+        start_idx = None
+        open_brace_idx = None
+        
+        # 1. Find "variables" keyword
         for i, line in enumerate(lines):
-            if "variables" in line and "{" in line:
-                start = i
-                brace_count = line.count("{") - line.count("}")
-                if brace_count == 0:
-                    return start, i
-                continue
-            if start is not None:
-                brace_count += line.count("{") - line.count("}")
-                if brace_count == 0:
-                    return start, i
+            # Ignore comments (simple check)
+            clean_line = line.split("//")[0].strip()
+            if "variables" == clean_line:
+                start_idx = i
+                break
+            # Handle "variables {" on same line
+            if clean_line.startswith("variables") and "{" in clean_line:
+                start_idx = i
+                open_brace_idx = i
+                break
+        
+        if start_idx is None:
+            return None, None
+
+        # 2. Find opening brace if not found yet
+        if open_brace_idx is None:
+            for i in range(start_idx, len(lines)):
+                if "{" in lines[i]:
+                    open_brace_idx = i
+                    break
+        
+        if open_brace_idx is None:
+            return None, None
+
+        # 3. Find closing brace
+        brace_count = 0
+        for i in range(open_brace_idx, len(lines)):
+            line = lines[i]
+            # Simple brace counting (ignoring strings/comments for now as linter runs on text)
+            # A more robust approach would use AST, but this is a text-based fix.
+            brace_count += line.count("{")
+            brace_count -= line.count("}")
+            
+            if brace_count == 0:
+                return start_idx, i
+                
         return None, None
 
 
