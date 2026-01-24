@@ -60,7 +60,7 @@ build-backend = "hatchling.build"
 packages = ["src/capl_cli"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "packages/*/tests"]
+testpaths = ["tests", "packages/*/tests_*"]
 python_files = ["test_*.py"]
 addopts = [
     "--verbose",
