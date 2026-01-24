@@ -7,7 +7,7 @@
     *   `tree-sitter-c`: Specifically used as the C grammar to parse CAPL, leveraging its C-like syntax.
 *   **SQLite:** Employed via the `sqlite3` Python module for persistent storage of parsed symbols and dependency information in `aic.db`.
 *   **uv:** The modern Python package manager used for efficient dependency resolution and project execution.
-    *   **Workspaces:** Utilized to manage a modular monorepo structure with independent packages.
+    *   **Single Package:** The project is organized as a single Python package (`capllint`) with internal modules for modularity and ease of distribution.
 
 ## 2. Development Stack
 

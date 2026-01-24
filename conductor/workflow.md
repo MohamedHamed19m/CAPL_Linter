@@ -160,28 +160,36 @@ uv lock --upgrade
 
 ### Daily Development
 ```bash
-# Run the linter from source
-uv run capl-lint lint <file.can>
-# Run the analyzer
-uv run capl-analyze analyze <file.can>
+# Format CAPL code
+uv run capllint format <file.can>
+
+# Lint CAPL code with auto-fix
+uv run capllint lint --fix <file.can>
+
+# Analyze dependencies and symbols
+uv run capllint analyze <file.can>
 
 # Run all tests
 uv run pytest
 
-# Run tests for a specific package
-uv run --package capl-linter pytest
+# Run tests for a specific module
+uv run pytest src/capl_linter/
+uv run pytest src/capl_formatter/
 ```
 
 ### Before Committing
 ```bash
-# Format all code in the workspace
+# Format all Python code
 uv run ruff format .
 
-# Lint all code in the workspace
+# Lint all Python code
 uv run ruff check --fix .
 
 # Verify type safety
 uv run mypy .
+
+# Lint CAPL files (if applicable)
+uv run capllint lint --fix <your-capl-files>
 ```
 
 ## Testing Requirements
