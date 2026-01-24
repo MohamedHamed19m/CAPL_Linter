@@ -10,6 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-01-24
 
 ### Added
-- Initial experimental release of Drift (CAPL Linter/Formatter).
-- Core packages: `capl-tree-sitter`, `capl-symbol-db`, `capl-linter`, `capl-formatter`.
-- CLI entry point `drift`.
+- Initial experimental release of `capllint` (CAPL Linter/Formatter).
+- Core packages: `capl-tree-sitter`, `capl-symbol-db`, `capl-linter-engine`, `capl-formatter`.
+- CLI entry point `capllint`.

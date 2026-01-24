@@ -109,7 +109,7 @@ The project is organized into a modular monorepo structure:
 - **`drift`** (Root): User-facing CLI built with `typer`.
 - **`packages/capl-tree-sitter`**: Core CAPL parsing using tree-sitter.
 - **`packages/capl-symbol-db`**: Symbol extraction and persistent storage (SQLite).
-- **`packages/capl-linter`**: Analysis engine and auto-fix logic.
+- **`packages/capl-linter-engine`**: Analysis engine and auto-fix logic.
 - **`packages/capl-formatter`**: AST-based code formatter.
 
 ```
@@ -117,7 +117,7 @@ capl-analyzer/
 ├── packages/
 │   ├── capl-tree-sitter/
 │   ├── capl-symbol-db/
-│   ├── capl-linter/
+│   ├── capl-linter-engine/
 │   └── capl-formatter/
 ├── src/
 │   └── capl_cli/          # CLI source
@@ -134,7 +134,7 @@ capl-analyzer/
 uv run --workspace pytest
 
 # Run tests for a specific package
-uv run --package capl-linter pytest
+uv run --package capl-linter-engine pytest
 
 # Run with coverage aggregated across the workspace
 uv run --workspace pytest --cov-report=html

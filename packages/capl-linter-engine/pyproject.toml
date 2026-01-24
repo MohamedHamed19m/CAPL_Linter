@@ -1,5 +1,5 @@
 [project]
-name = "capl-linter"
+name = "capl-linter-engine"
 version = "0.1.0"
 description = "Analysis engine & auto-fix logic for CAPL"
 readme = "README.md"

@@ -27,9 +27,9 @@ jobs:
         run: |
           uv build --package capl-tree-sitter
           uv build --package capl-symbol-db
-          uv build --package capl-linter
+          uv build --package capl-linter-engine
           uv build --package capl-formatter
-          uv build --package drift
+          uv build --package capllint
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

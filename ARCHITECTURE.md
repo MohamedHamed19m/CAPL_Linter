@@ -11,11 +11,11 @@ graph TD
     A[Source File .can/.cin] --> B[capl-tree-sitter]
     B -->|AST| C[capl-symbol-db: Extractor]
     C -->|Neutral Dataclasses| D[capl-symbol-db: SQLite]
-    D -->|Neutral Symbols| E[capl-linter: Engine]
-    E -->|Judgment Logic| F[capl-linter: Issues]
+    D -->|Neutral Symbols| E[capl-linter-engine: Engine]
+    E -->|Judgment Logic| F[capl-linter-engine: Issues]
     B -.->|Re-parse for Syntax| E
     F -->|CLI Output| G[User/JSON]
-    F -->|Fix Engine| H[capl-linter: AutoFix]
+    F -->|Fix Engine| H[capl-linter-engine: AutoFix]
     H -->|Modified Source| A
 ```
 
@@ -33,7 +33,7 @@ graph TD
     *   `Extractor`: Populates the DB with raw symbol attributes.
     *   `XRef`: Maps usages vs. definitions for semantic analysis.
 
-### 📦 capl-linter (The "Brain")
+### 📦 capl-linter-engine (The "Brain")
 *   **Role**: The "Judge" of the system.
 *   **Two-Pronged Analysis**:
     1.  **Syntax Rules**: Re-parse the AST via `capl-tree-sitter` to find forbidden patterns (e.g., `extern`).

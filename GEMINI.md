@@ -5,12 +5,12 @@
 | Feature / Logic | Primary File Path |
 | :--- | :--- |
 | **CLI Entry Point** | `src/capl_cli/main.py` |
-| **Rule Registry** | `packages/capl-linter/src/capl_linter/registry.py` |
-| **Linter Engine** | `packages/capl-linter/src/capl_linter/engine.py` |
-| **Syntax Rules** | `packages/capl-linter/src/capl_linter/rules/syntax_rules.py` |
-| **Type Rules** | `packages/capl-linter/src/capl_linter/rules/type_rules.py` |
-| **Variable Rules** | `packages/capl-linter/src/capl_linter/rules/variable_rules.py` |
-| **Semantic Rules** | `packages/capl-linter/src/capl_linter/rules/semantic_rules.py` |
+| **Rule Registry** | `packages/capl-linter-engine/src/capl_linter/registry.py` |
+| **Linter Engine** | `packages/capl-linter-engine/src/capl_linter/engine.py` |
+| **Syntax Rules** | `packages/capl-linter-engine/src/capl_linter/rules/syntax_rules.py` |
+| **Type Rules** | `packages/capl-linter-engine/src/capl_linter/rules/type_rules.py` |
+| **Variable Rules** | `packages/capl-linter-engine/src/capl_linter/rules/variable_rules.py` |
+| **Semantic Rules** | `packages/capl-linter-engine/src/capl_linter/rules/semantic_rules.py` |
 | **Formatter Engine** | `packages/capl-formatter/src/capl_formatter/engine.py` |
 | **Ordering Rule** | `packages/capl-formatter/src/capl_formatter/rules/top_level_ordering.py` |
 | **Database Schema** | `packages/capl-symbol-db/src/capl_symbol_db/database.py` |
@@ -35,7 +35,7 @@ The codebase is split into independent library packages and a root CLI package, 
     *   `extractor.py`: Extracts **neutral facts** (e.g., `has_body`, `param_count`) without performing validation.
     *   `database.py`: Manages `aic.db` with support for recursive CTEs for transitive includes.
     *   `xref.py`: Cross-reference and call graph builder.
-*   **`capl-linter`**: Analysis and correction layer.
+*   **`capl-linter-engine`**: Analysis and correction layer.
     *   `engine.py`: `LinterEngine` coordinates multi-pass analysis and rule execution.
     *   `builtins.py`: List of CAPL standard library functions and keywords.
     *   `autofix.py`: `AutoFixEngine` delegates to rule-specific `fix()` methods.
@@ -46,7 +46,7 @@ The codebase is split into independent library packages and a root CLI package, 
     *   `models.py`: Configuration and transformation data structures.
 
 ### 2. CLI Package (Root)
-*   **`src/capl_cli/`**: The `drift` package.
+*   **`src/capl_cli/`**: The `capllint` package.
     *   `main.py`: Entry point with support for `--project` and `--fix`.
     *   `config.py`: Loads configuration from `.capl-lint.toml`.
 
@@ -57,13 +57,13 @@ The codebase is split into independent library packages and a root CLI package, 
 ## How to Add New Features
 
 ### Adding a New Lint Rule
-1.  Create a new rule class in `packages/capl-linter/src/capl_linter/rules/`.
+1.  Create a new rule class in `packages/capl-linter-engine/src/capl_linter/rules/`.
 2.  Inherit from `BaseRule` and implement:
     *   `rule_id`: Standardized code (e.g., `E001`).
     *   `name`: Human-readable slug.
     *   `severity`: `Severity` enum.
     *   `check(file_path, db)`: Re-parse via `CAPLParser` for syntax rules, or query `db.get_visible_symbols()` for semantic rules.
-3.  Register the rule in `packages/capl-linter/src/capl_linter/registry.py`.
+3.  Register the rule in `packages/capl-linter-engine/src/capl_linter/registry.py`.
 
 ### Adding New Auto-Fix Logic
 1.  Implement the `fix(file_path, issues)` method within your rule class.
@@ -88,15 +88,15 @@ uv lock --upgrade
 ### Common Commands
 *   **Run Formatter:**
     ```bash
-    uv run drift format <file.can>
+    uv run capllint format <file.can>
     ```
 *   **Run Linter with Auto-Fix:**
     ```bash
-    uv run drift lint --fix <file.can>
+    uv run capllint lint --fix <file.can>
     ```
 *   **Run Analysis (Dependency/Symbol Dump):**
     ```bash
-    uv run drift analyze <file.can>
+    uv run capllint analyze <file.can>
     ```
 *   **Run All Tests:**
     ```bash
@@ -104,7 +104,7 @@ uv lock --upgrade
     ```
 *   **Run Tests for a Specific Package:**
     ```bash
-    uv run --package capl-linter pytest
+    uv run --package capl-linter-engine pytest
     ```
 
 ## Development Conventions
