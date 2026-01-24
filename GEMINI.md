@@ -86,6 +86,10 @@ uv lock --upgrade
 ```
 
 ### Common Commands
+*   **Run Formatter:**
+    ```bash
+    uv run drift format <file.can>
+    ```
 *   **Run Linter with Auto-Fix:**
     ```bash
     uv run drift lint --fix <file.can>

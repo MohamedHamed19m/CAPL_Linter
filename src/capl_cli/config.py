@@ -42,6 +42,7 @@ class FormatConfig:
         self.line_length: int = 100
         self.brace_style: str = "k&r"
         self.quote_style: str = "double"
+        self.reorder_top_level: bool = False
 
         if config_path and config_path.exists():
             self._load_from_file(config_path)
@@ -56,6 +57,7 @@ class FormatConfig:
             self.line_length = fmt_data.get("line-length", self.line_length)
             self.brace_style = fmt_data.get("brace-style", self.brace_style)
             self.quote_style = fmt_data.get("quote-style", self.quote_style)
+            self.reorder_top_level = fmt_data.get("reorder-top-level", self.reorder_top_level)
         except Exception:
             pass
 
@@ -67,4 +69,5 @@ class FormatConfig:
             line_length=self.line_length,
             brace_style=self.brace_style,
             quote_style=self.quote_style,
+            reorder_top_level=self.reorder_top_level,
         )

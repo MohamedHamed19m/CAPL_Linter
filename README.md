@@ -17,30 +17,49 @@
 - **Static Analysis / Linter**: Detect common issues and enforce coding standards across multiple files.
 - **Configuration Support**: Customize behavior via `.capl-lint.toml`.
 
-## 💅 Formatting (New!)
+## 💅 Formatting
 
-The `drift format` command provides highly stable, idempotent formatting for CAPL:
+The `drift format` command provides highly stable, idempotent formatting for CAPL, inspired by modern tools like Ruff and Black.
 
-- **AST-Based**: Uses `tree-sitter-c` for precision structure detection.
-- **K&R Braces**: Enforces opening braces on the same line.
-- **Intelligent Spacing**: Standardizes operators, keywords, and punctuation.
-- **Precision Indentation**: Direct calculation of nesting depth from the AST.
-- **Smart Vertical Spacing**: 
-    - **Setup vs. Logic**: Compresses variable declarations at the start of functions while preserving readability in logic sections.
-    - **Global Preservation**: Respects grouping in global `variables` blocks.
-- **Canonical Ordering** (Optional): Automatically reorders top-level blocks to a standard hierarchy:
-    1. `includes`
-    2. `variables`
-    3. `testcase` definitions
-    4. `on ...` event handlers (Alphabetical)
-    5. Helper functions (Alphabetical)
+### Core Features
+
+- **AST-Based Precision**: Uses `tree-sitter-c` to understand code structure, ensuring formatting never breaks logic.
+- **Context-Aware Vertical Spacing**: 
+    - **Setup Zone**: Automatically compresses local variable declarations at the start of blocks for a clean "header" look.
+    - **Logic Zone**: Preserves developer-intended blank lines between functional statements.
+    - **Boundary Cleanup**: Removes redundant blank lines at the start and end of blocks.
+- **Top-Level Reordering** (Optional): Enforces a standardized architectural hierarchy:
+    1. `includes` blocks.
+    2. `variables` blocks (Global scope).
+    3. `testcase` definitions (preserving relative order).
+    4. Event handlers (`on message`, `on start`, etc.) sorted alphabetically.
+    5. User functions sorted alphabetically.
+- **Modern Standards**: Enforces K&R brace style, intelligent operator spacing, and consistent quote usage.
+
+### Usage
 
 ```bash
-# Format a file in-place
-uv run drift format MyNode.can
+# Format specific files or directories in-place
+uv run drift format MyNode.can src/
 
-# Check for formatting issues without modifying
-uv run drift format --check MyNode.can
+# Check for violations without modifying (CI mode)
+uv run drift format --check .
+
+# Output results in JSON format
+uv run drift format --json .
+```
+
+### Configuration
+
+Customize the formatter via `.capl-format.toml`:
+
+```toml
+[tool.capl-format]
+indent-size = 2
+line-length = 100
+brace-style = "k&r"
+quote-style = "double"
+reorder-top-level = true  # Standardize architectural order
 ```
 
 ## 📋 What Can It Detect?
@@ -151,6 +170,8 @@ For detailed documentation, see the [docs](./docs) directory or visit the [wiki]
 - [ ] Add auto-fix capabilities for style issues
 - [ ] Build VS Code extension
 - [ ] Add configuration file support (.capl-lint.toml)
+- [ ] **Formatter**: Implement advanced "Chop-down" line wrapping for complex arguments
+- [ ] **Formatter**: Enforce semantic style (e.g., standardizing Hex casing `0x1A`)
 
 ## 💬 Support
 
