@@ -137,25 +137,11 @@ class GlobalTypeDefinitionRule(BaseRule):
 
     def fix(self, file_path: Path, issues: list[InternalIssue]) -> str:
         lines = file_path.read_text(encoding="utf-8").split("\n")
-        # Use helper from VariableOutsideBlockRule for now
         from .variable_rules import VariableOutsideBlockRule
-
         v_rule = VariableOutsideBlockRule()
-        var_block_start, var_block_end = v_rule._find_variables_block_range(lines)
 
-        if var_block_start is None:
-            # Create variables block after includes
-            insert_pos = 0
-            for i, line in enumerate(lines):
-                if not line.strip().startswith("#include"):
-                    insert_pos = i
-                    break
-            lines.insert(insert_pos, "variables {")
-            lines.insert(insert_pos + 1, "}")
-            var_block_start = insert_pos
-            var_block_end = insert_pos + 1
-
-        # Process each issue bottom-up
+        # 1. Collect and remove all definitions from bottom to top
+        to_move = []
         for issue in sorted(issues, key=lambda x: x.line, reverse=True):
             start_line_idx = issue.line - 1
             if start_line_idx >= len(lines):
@@ -183,15 +169,26 @@ class GlobalTypeDefinitionRule(BaseRule):
                 # Remove from lines
                 for _ in range(len(def_lines)):
                     lines.pop(start_line_idx)
+                
+                to_move.append([line.strip() for line in def_lines])
 
-                # Adjust var_block_end
-                if start_line_idx < var_block_end:
-                    var_block_end -= len(def_lines)
-
-                # Insert into variables block
-                for i, def_line in enumerate(def_lines):
-                    lines.insert(var_block_end, "  " + def_line.strip())
-                    var_block_end += 1
+        # 2. Ensure block exists
+        _, var_block_end = v_rule._find_variables_block_range(lines)
+        if var_block_end is None:
+            insert_pos = 0
+            for i, line in enumerate(lines):
+                if not line.strip().startswith("#include"):
+                    insert_pos = i
+                    break
+            lines.insert(insert_pos, "variables {")
+            lines.insert(insert_pos + 1, "}")
+            var_block_end = insert_pos + 1
+        
+        # 3. Insert all collected definitions
+        for def_lines in reversed(to_move):
+            for def_line in def_lines:
+                lines.insert(var_block_end, "  " + def_line)
+                var_block_end += 1
 
         return "\n".join(lines)
 

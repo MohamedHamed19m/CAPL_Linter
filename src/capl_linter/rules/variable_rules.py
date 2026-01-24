@@ -33,10 +33,21 @@ class VariableOutsideBlockRule(BaseRule):
 
     def fix(self, file_path: Path, issues: list[InternalIssue]) -> str:
         lines = file_path.read_text(encoding="utf-8").split("\n")
-        var_block_start, var_block_end = self._find_variables_block_range(lines)
+        
+        # 1. Collect all variables to move (with their lines)
+        # Sort by line number descending to avoid index shifting during removal
+        sorted_issues = sorted(issues, key=lambda x: x.line, reverse=True)
+        to_move = []
+        for issue in sorted_issues:
+            line_idx = issue.line - 1
+            if line_idx < len(lines):
+                # Save the content and remove the line
+                to_move.append(lines.pop(line_idx).strip())
 
+        # 2. Ensure block exists and find insertion point
+        var_block_start, var_block_end = self._find_variables_block_range(lines)
         if var_block_start is None:
-            # Create variables block after includes
+            # Create block
             insert_pos = 0
             for i, line in enumerate(lines):
                 if not line.strip().startswith("#include"):
@@ -44,22 +55,13 @@ class VariableOutsideBlockRule(BaseRule):
                     break
             lines.insert(insert_pos, "variables {")
             lines.insert(insert_pos + 1, "}")
-            var_block_start = insert_pos
             var_block_end = insert_pos + 1
-
-        # Collect variables to move (sort by line number descending)
-        to_move = sorted(issues, key=lambda x: x.line, reverse=True)
-
-        for issue in to_move:
-            line_idx = issue.line - 1
-            if line_idx >= len(lines):
-                continue
-
-            var_line = lines.pop(line_idx)
-            if line_idx < var_block_end:
-                var_block_end -= 1
-
-            lines.insert(var_block_end, "  " + var_line.strip())
+        
+        # 3. Insert all moved variables into the block
+        # Use reversed(to_move) because we collected them bottom-up (reverse=True)
+        # but we want to insert them at the END of the block in original order.
+        for var_content in reversed(to_move):
+            lines.insert(var_block_end, "  " + var_content)
             var_block_end += 1
 
         return "\n".join(lines)

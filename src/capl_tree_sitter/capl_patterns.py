@@ -68,23 +68,30 @@ class CAPLPatterns:
 
         CAPL uses variables {} as a keyword-like construct, but tree-sitter
         sees it as a compound statement with 'variables' identifier.
+        
+        Tree-sitter-c parses it as:
+        - ERROR node containing "variables"
+        - followed by compound_statement
         """
-        # Look for compound_statement
-        block = ASTWalker.find_parent_of_type(node, "compound_statement")
-        if not block or not block.parent:
-            return False
-
-        # Check siblings of the block for 'variables'
-        siblings = block.parent.children
-        try:
-            block_index = siblings.index(block)
-        except ValueError:
-            return False
-
-        # Check if there's 'variables' text in siblings before this block
-        for i in range(max(0, block_index - 3), block_index):
-            if "variables" in ASTWalker.get_text(siblings[i], source):
-                return True
+        current = node
+        # Walk up to find any compound_statement that is preceded by 'variables'
+        while current:
+            if current.type == "compound_statement":
+                # Check siblings of THIS compound_statement
+                if current.parent:
+                    siblings = current.parent.children
+                    try:
+                        idx = siblings.index(current)
+                        # Check all previous siblings for 'variables' text
+                        for i in range(idx):
+                            text = ASTWalker.get_text(siblings[i], source).strip()
+                            # Match ERROR nodes or identifiers containing "variables"
+                            # Use 'in' to handle ERROR node format: "'variables'"
+                            if "variables" in text and len(text) < 20:  # Sanity check
+                                return True
+                    except ValueError:
+                        pass
+            current = current.parent
 
         return False
 
@@ -158,17 +165,35 @@ class CAPLPatterns:
 
     @staticmethod
     def get_variable_name(var_node: Node, source: bytes | str) -> str | None:
-        """Extract variable name from a declaration or parameter_declaration node."""
+        """Extract variable name from a declaration or parameter_declaration node.
+        
+        Handles arrays, pointers, and simple identifiers by finding the first identifier.
+        """
         if var_node.type not in ("declaration", "parameter_declaration"):
             return None
 
-        # Try init_declarator first
-        declarator = ASTWalker.get_child_of_type(var_node, "init_declarator")
-        if declarator:
-            name_node = ASTWalker.get_child_of_type(declarator, "identifier")
-        else:
-            # Try direct identifier
-            name_node = ASTWalker.get_child_of_type(var_node, "identifier")
+        # Robust approach: find the first identifier that is NOT a type name
+        # In a declaration, the identifier is usually a descendant.
+        # We skip identifiers inside type_specifiers if possible.
+        
+        # Try to find identifier that is part of a declarator
+        name_node = None
+        
+        # Look for the first identifier that's not inside a type_specifier/type_identifier
+        # We walk the children and look for declarators
+        for child in var_node.children:
+            if child.type in ("identifier", "init_declarator", "array_declarator", "pointer_declarator"):
+                # Recursive search for the identifier within this declarator
+                id_nodes = ASTWalker.find_all_by_type(child, "identifier")
+                if id_nodes:
+                    name_node = id_nodes[0]
+                    break
+        
+        if not name_node:
+            # Fallback: just find any identifier
+            id_nodes = ASTWalker.find_all_by_type(var_node, "identifier")
+            if id_nodes:
+                name_node = id_nodes[0]
 
         if not name_node:
             return None

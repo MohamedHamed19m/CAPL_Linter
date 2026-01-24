@@ -190,6 +190,25 @@ class SymbolDatabase:
         finally:
             conn.close()
 
+    def clear_file_data(self, file_path: Path):
+        """Remove all data related to a specific file (symbols, types, etc.)"""
+        file_path_abs = str(file_path.resolve())
+        conn = sqlite3.connect(self.db_path)
+        try:
+            with conn:
+                # Find file_id first
+                cursor = conn.execute("SELECT file_id FROM files WHERE file_path = ?", (file_path_abs,))
+                res = cursor.fetchone()
+                if res:
+                    file_id = res[0]
+                    conn.execute("DELETE FROM symbols WHERE file_id = ?", (file_id,))
+                    conn.execute("DELETE FROM type_definitions WHERE file_id = ?", (file_id,))
+                    conn.execute("DELETE FROM symbol_references WHERE file_id = ?", (file_id,))
+                    conn.execute("DELETE FROM message_usage WHERE file_id = ?", (file_id,))
+                    # We don't delete the file entry itself, just its facts
+        finally:
+            conn.close()
+
     def get_file_hash(self, file_path: Path) -> str | None:
         """Get stored hash for a file"""
         file_path_abs = str(file_path.resolve())
