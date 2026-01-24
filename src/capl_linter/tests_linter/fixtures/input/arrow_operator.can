@@ -1,0 +1,7 @@
+void test() {
+
+  int w;
+  
+  struct MyStruct x;
+  w = x->member;
+}

@@ -1,0 +1,1 @@
+Line 2: [E006] ERROR - Variable 'global_var' declared outside 'variables {}' block

@@ -1,0 +1,4 @@
+Line 2: [E001] ERROR - 'extern' keyword is not supported in CAPL
+Line 2: [E006] ERROR - Variable 'x' declared outside 'variables {}' block
+Line 4: [E011] ERROR - Undefined symbol 'p'
+Line 5: [E011] ERROR - Undefined symbol 'p'
