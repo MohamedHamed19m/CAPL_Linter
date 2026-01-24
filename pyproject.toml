@@ -21,10 +21,10 @@ classifiers = [
 ]
 
 dependencies = [
-    "capl-tree-sitter",
-    "capl-symbol-db",
-    "capl-linter",
-    "capl-formatter",
+    "capl-tree-sitter>=0.1.0",
+    "capl-symbol-db>=0.1.0",
+    "capl-linter>=0.1.0",
+    "capl-formatter>=0.1.0",
     "pydantic>=2.0.0",
     "typer>=0.9.0",
 ]
@@ -90,6 +90,18 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 check_untyped_defs = true
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+tag_format = "v$version"
+version_files = [
+    "pyproject.toml:version",
+    "packages/capl-tree-sitter/pyproject.toml:version",
+    "packages/capl-symbol-db/pyproject.toml:version",
+    "packages/capl-linter/pyproject.toml:version",
+    "packages/capl-formatter/pyproject.toml:version",
+]
 
 [project.urls]
 Homepage = "https://github.com/MohamedHamed19m/CAPL_Linter"

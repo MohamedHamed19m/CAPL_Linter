@@ -4,11 +4,11 @@ version = "0.1.0"
 description = "Opinionated CAPL code formatter"
 readme = "README.md"
 authors = [
-    { name = "Your Name", email = "your.email@example.com" }
+    { name = "MohamedHamed19m", email = "mohamedahamed1915@gmail.com" }
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "capl-tree-sitter",
+    "capl-tree-sitter>=0.1.0",
 ]
 
 [tool.uv.sources]
