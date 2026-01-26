@@ -171,7 +171,7 @@ def format(
 
     for f in files:
         try:
-            source = f.read_text(encoding="utf-8")
+            source = f.read_text(encoding="utf-8-sig")
             result = engine.format_string(source, str(f))
 
             if result.errors:

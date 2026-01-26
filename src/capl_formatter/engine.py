@@ -351,7 +351,7 @@ class FormatterEngine:
         error_count = 0
         for file_path in files:
             try:
-                source = file_path.read_text(encoding="utf-8")
+                source = file_path.read_text(encoding="utf-8-sig")
                 result = self.format_string(source, str(file_path))
                 results.append(result)
                 if result.errors:
