@@ -1,7 +1,7 @@
 import re
-from typing import List
-from .base import TextRule, FormattingContext, Transformation
+
 from ..models import FormatterConfig
+from .base import FormattingContext, TextRule, Transformation
 
 
 class QuoteNormalizationRule(TextRule):
@@ -18,7 +18,7 @@ class QuoteNormalizationRule(TextRule):
     def name(self) -> str:
         return "quote-normalization"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         if self.config.quote_style != "double":
             return []
         transformations = []

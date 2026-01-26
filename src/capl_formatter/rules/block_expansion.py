@@ -1,6 +1,5 @@
-from typing import List
-from .base import ASTRule, FormattingContext, Transformation
 from ..models import FormatterConfig
+from .base import ASTRule, FormattingContext, Transformation
 
 
 class BlockExpansionRule(ASTRule):
@@ -18,7 +17,7 @@ class BlockExpansionRule(ASTRule):
     def name(self) -> str:
         return "block-expansion"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         if not context.tree:
             return []
         transformations = []

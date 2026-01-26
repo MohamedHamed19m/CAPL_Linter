@@ -1,6 +1,5 @@
-from typing import List
-from .base import ASTRule, FormattingContext, Transformation
 from ..models import FormatterConfig
+from .base import ASTRule, FormattingContext, Transformation
 
 LOGIC_NODE_TYPES = {
     "expression_statement",
@@ -33,7 +32,7 @@ class VerticalSpacingRule(ASTRule):
     def name(self) -> str:
         return "vertical-spacing"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         if not context.tree:
             return []
 

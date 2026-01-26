@@ -1,6 +1,7 @@
-from typing import List, Dict, Any, Tuple
+from typing import Any
+
+from ..models import CommentAttachment, FormatterConfig
 from .base import ASTRule, FormattingContext, Transformation
-from ..models import FormatterConfig, CommentAttachment
 
 
 class TopLevelOrderingRule(ASTRule):
@@ -25,7 +26,7 @@ class TopLevelOrderingRule(ASTRule):
     def name(self) -> str:
         return "top-level-ordering"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         if not self.config.reorder_top_level:  # Config flag check
             return []
 
@@ -46,7 +47,7 @@ class TopLevelOrderingRule(ASTRule):
 
         # 2. Pre-process Comments for fast lookup
         # Map: node.id -> List[CommentAttachment] (sorted by line)
-        comment_lookup: Dict[int, List[CommentAttachment]] = {}
+        comment_lookup: dict[int, list[CommentAttachment]] = {}
         if context.metadata and "comment_attachments" in context.metadata:
             for attachment in context.metadata["comment_attachments"].values():
                 if attachment.attachment_type == "header" and attachment.target_node:
@@ -232,7 +233,7 @@ class TopLevelOrderingRule(ASTRule):
         parts.append(source[node.start_byte : node.end_byte])
         return "\n".join(parts)
 
-    def _extract_merged_text(self, nodes: List[Any], source, comment_lookup) -> str:
+    def _extract_merged_text(self, nodes: list[Any], source, comment_lookup) -> str:
         """Extract text for a split block (keyword + body), handling comments on the keyword."""
         if not nodes:
             return ""

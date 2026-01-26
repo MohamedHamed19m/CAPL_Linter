@@ -1,4 +1,3 @@
-import pytest
 from capl_linter.engine import LinterEngine
 
 

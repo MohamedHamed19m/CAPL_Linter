@@ -1,8 +1,8 @@
-from pathlib import Path
 import pytest
+
+from capl_linter.rules.semantic_rules import CircularIncludeRule
 from capl_symbol_db.database import SymbolDatabase
 from capl_symbol_db.dependency import DependencyAnalyzer
-from capl_linter.rules.semantic_rules import CircularIncludeRule
 
 
 def test_circular_dependency_detection(tmp_path):

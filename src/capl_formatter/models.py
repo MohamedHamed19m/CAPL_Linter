@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Literal, Any
+from typing import Literal
+
 from tree_sitter import Node
 
 
@@ -23,7 +24,7 @@ class FormatterConfig:
 class CommentAttachment:
     comment_node: Node  # Tree-sitter node
     attachment_type: Literal["header", "inline", "footer", "standalone", "section"]
-    target_node: Optional[Node]  # Associated code node
+    target_node: Node | None  # Associated code node
     comment_line: int  # Line number
     target_line: int  # Target's line number
     distance: int  # Lines between comment and target
@@ -33,12 +34,12 @@ class CommentAttachment:
 class FormatResult:
     source: str
     modified: bool
-    errors: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
 
 @dataclass
 class FormatResults:
-    results: List[FormatResult]
+    results: list[FormatResult]
     total_files: int
     modified_files: int
     error_files: int

@@ -1,7 +1,5 @@
-import re
-from typing import List
-from .base import ASTRule, FormattingContext, Transformation
 from ..models import FormatterConfig
+from .base import ASTRule, FormattingContext, Transformation
 
 
 class IntelligentWrappingRule(ASTRule):
@@ -18,7 +16,7 @@ class IntelligentWrappingRule(ASTRule):
     def name(self) -> str:
         return "intelligent-wrapping"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         if not context.tree:
             return []
         transformations = []

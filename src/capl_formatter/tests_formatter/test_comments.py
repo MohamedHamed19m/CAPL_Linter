@@ -1,4 +1,3 @@
-import pytest
 from capl_formatter.engine import FormatterEngine
 from capl_formatter.models import FormatterConfig
 from capl_tree_sitter.parser import CAPLParser

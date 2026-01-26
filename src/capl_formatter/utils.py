@@ -1,5 +1,5 @@
 import re
-from typing import Callable
+from collections.abc import Callable
 
 
 def apply_text_transformation(source: str, transform_func: Callable[[str], str]) -> str:

@@ -33,10 +33,21 @@ class VariableOutsideBlockRule(BaseRule):
 
     def fix(self, file_path: Path, issues: list[InternalIssue]) -> str:
         lines = file_path.read_text(encoding="utf-8").split("\n")
-        var_block_start, var_block_end = self._find_variables_block_range(lines)
 
+        # 1. Collect all variables to move (with their lines)
+        # Sort by line number descending to avoid index shifting during removal
+        sorted_issues = sorted(issues, key=lambda x: x.line, reverse=True)
+        to_move = []
+        for issue in sorted_issues:
+            line_idx = issue.line - 1
+            if line_idx < len(lines):
+                # Save the content and remove the line
+                to_move.append(lines.pop(line_idx).strip())
+
+        # 2. Ensure block exists and find insertion point
+        var_block_start, var_block_end = self._find_variables_block_range(lines)
         if var_block_start is None:
-            # Create variables block after includes
+            # Create block
             insert_pos = 0
             for i, line in enumerate(lines):
                 if not line.strip().startswith("#include"):
@@ -44,40 +55,59 @@ class VariableOutsideBlockRule(BaseRule):
                     break
             lines.insert(insert_pos, "variables {")
             lines.insert(insert_pos + 1, "}")
-            var_block_start = insert_pos
             var_block_end = insert_pos + 1
 
-        # Collect variables to move (sort by line number descending)
-        to_move = sorted(issues, key=lambda x: x.line, reverse=True)
-
-        for issue in to_move:
-            line_idx = issue.line - 1
-            if line_idx >= len(lines):
-                continue
-
-            var_line = lines.pop(line_idx)
-            if line_idx < var_block_end:
-                var_block_end -= 1
-
-            lines.insert(var_block_end, "  " + var_line.strip())
+        # 3. Insert all moved variables into the block
+        # Use reversed(to_move) because we collected them bottom-up (reverse=True)
+        # but we want to insert them at the END of the block in original order.
+        for var_content in reversed(to_move):
+            lines.insert(var_block_end, "  " + var_content)
             var_block_end += 1
 
         return "\n".join(lines)
 
     def _find_variables_block_range(self, lines: list[str]):
-        start = None
-        brace_count = 0
+        start_idx = None
+        open_brace_idx = None
+
+        # 1. Find "variables" keyword
         for i, line in enumerate(lines):
-            if "variables" in line and "{" in line:
-                start = i
-                brace_count = line.count("{") - line.count("}")
-                if brace_count == 0:
-                    return start, i
-                continue
-            if start is not None:
-                brace_count += line.count("{") - line.count("}")
-                if brace_count == 0:
-                    return start, i
+            # Ignore comments (simple check)
+            clean_line = line.split("//")[0].strip()
+            if "variables" == clean_line:
+                start_idx = i
+                break
+            # Handle "variables {" on same line
+            if clean_line.startswith("variables") and "{" in clean_line:
+                start_idx = i
+                open_brace_idx = i
+                break
+
+        if start_idx is None:
+            return None, None
+
+        # 2. Find opening brace if not found yet
+        if open_brace_idx is None:
+            for i in range(start_idx, len(lines)):
+                if "{" in lines[i]:
+                    open_brace_idx = i
+                    break
+
+        if open_brace_idx is None:
+            return None, None
+
+        # 3. Find closing brace
+        brace_count = 0
+        for i in range(open_brace_idx, len(lines)):
+            line = lines[i]
+            # Simple brace counting (ignoring strings/comments for now as linter runs on text)
+            # A more robust approach would use AST, but this is a text-based fix.
+            brace_count += line.count("{")
+            brace_count -= line.count("}")
+
+            if brace_count == 0:
+                return start_idx, i
+
         return None, None
 
 

@@ -1,7 +1,7 @@
 import re
-from typing import List
-from .base import TextRule, FormattingContext, Transformation
+
 from ..models import FormatterConfig
+from .base import FormattingContext, TextRule, Transformation
 
 
 class WhitespaceCleanupRule(TextRule):
@@ -18,7 +18,7 @@ class WhitespaceCleanupRule(TextRule):
     def name(self) -> str:
         return "whitespace-cleanup"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         transformations = []
 
         # 1. Trailing Whitespace

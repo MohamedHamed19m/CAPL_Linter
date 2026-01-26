@@ -1,7 +1,7 @@
 import re
-from typing import List, Dict
-from .base import ASTRule, FormattingContext, Transformation
+
 from ..models import FormatterConfig
+from .base import ASTRule, FormattingContext, Transformation
 
 
 class IndentationRule(ASTRule):
@@ -18,12 +18,12 @@ class IndentationRule(ASTRule):
     def name(self) -> str:
         return "indentation"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         if not context.tree:
             return []
         transformations = []
         indent_size = self.config.indent_size
-        line_depths: Dict[int, int] = {}
+        line_depths: dict[int, int] = {}
         ignored_lines = set()
 
         # Initialize with a value indicating "unset" (e.g., -1)

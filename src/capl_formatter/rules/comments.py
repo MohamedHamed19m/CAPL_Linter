@@ -1,8 +1,8 @@
 import re
 import textwrap
-from typing import List, Optional
-from .base import ASTRule, TextRule, FormattingContext, Transformation
-from ..models import FormatterConfig, CommentAttachment
+
+from ..models import FormatterConfig
+from .base import FormattingContext, TextRule, Transformation
 
 
 class CommentAlignmentRule(TextRule):
@@ -19,7 +19,7 @@ class CommentAlignmentRule(TextRule):
     def name(self) -> str:
         return "comment-alignment"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         if not self.config.align_inline_comments:
             return []
         if not context.metadata or "comment_attachments" not in context.metadata:
@@ -103,7 +103,7 @@ class CommentReflowRule(TextRule):
     def name(self) -> str:
         return "comment-reflow"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         if not self.config.reflow_comments:
             return []
 
@@ -198,20 +198,46 @@ class CommentReflowRule(TextRule):
         return " ".join(content_parts)
 
     def _should_exclude(self, comment: str) -> bool:
-        if comment.startswith("/**") or comment.startswith("///") or "@param" in comment:
+        """Determine if a comment should be excluded from reflowing."""
+
+        # 1. check for standard Doxygen/doc markers
+        if comment.startswith("//!") or comment.startswith("///") or comment.startswith("/**"):
             return True
 
-        # ASCII Art / Diagrams
-        diagram_symbols = "+-|<>[]=-"
-        lines = comment.splitlines()
+        # 2. check for Doxygen tags (both @ and \ syntax) , this protects header style
+        doxygen_tags = [
+            r"@param",
+            r"@return",
+            r"@brief",
+            r"@details",
+            r"@see",
+            r"@note",
+            r"\param",
+            r"\return",
+            r"\brief",
+            r"\details",
+            r"\see",
+            r"\note",
+        ]
 
+        if any(tag in comment for tag in doxygen_tags):
+            return True
+
+        # 3. check for vector/special file headers
+        if "Encoding:" in comment:
+            return True
+
+        # 4. Check for Banner style comments (e.g., lines of asterisks or slashes)
+        lines = comment.splitlines()
         for line in lines:
-            # If line contains multiple diagram symbols, it's a diagram
-            symbol_count = sum(line.count(s) for s in diagram_symbols)
-            if symbol_count > 2 or "-->" in line or "==>" in line or "<-" in line or "->" in line:
+            stripped = line.strip()
+            if len(stripped) > 5 and set(stripped).issubset({"*", "/", "-", "=", " "}):
                 return True
 
-        # Large blocks of symbols
-        if re.search(r"[*=/-]{5,}", comment):
-            return True
+        # 5. Check for ASCII Art/Diagrams
+        diagram_symbols = "+-|<>=-"
+        for line in lines:
+            symbol_count = sum(line.count(s) for s in diagram_symbols)
+            if symbol_count > 2 or "-->" in line or "<--" in line or "->" in line or "<-" in line:
+                return True
         return False

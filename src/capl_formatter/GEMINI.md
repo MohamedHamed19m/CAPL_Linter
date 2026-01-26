@@ -50,25 +50,25 @@ To maintain high quality, every rule and modification must adhere to these invar
 Success is defined by the following metrics:
 *   **Zero ERROR Nodes**: The formatted output must still be valid CAPL and parse without `ERROR` nodes in `tree-sitter`.
 *   **Convergence Rate**: 95% of files should reach a stable state (idempotency) within 2 passes. Maximum allowed passes is 10.
-*   **No Regression**: Existing test cases in `packages/capl-formatter/tests/` must pass after any rule change.
+*   **No Regression**: Existing test cases in `src/capl_formatter/tests_formatter/` must pass after any rule change.
 
 ## Testing Strategy
 To maintain the high stability of the formatter, any new rule or bug fix MUST be accompanied by tests.
 
 ### 1. Snapshot Testing (Regression)
 Snapshot tests catch any change in the formatter's output. They are the primary defense against regressions.
-*   **File**: `tests/test_formatting_snapshots.py`
+*   **File**: `src/capl_formatter/tests_formatter/test_formatting_snapshots.py`
 *   **How to add**: Add a new test method to `TestFormattingSnapshots` class.
 *   **Workflow**:
-    *   `uv run pytest packages/capl-formatter/tests/test_formatting_snapshots.py --snapshot-update` to generate/update snapshots.
+    *   `uv run pytest src/capl_formatter/tests_formatter/test_formatting_snapshots.py --snapshot-update` to generate/update snapshots.
     *   Review the changes in the `snapshots/` directory before committing.
 
 ### 2. Golden File Testing (Correctness)
 Golden file tests compare the formatter against "perfect" hand-written reference files.
-*   **File**: `tests/test_golden_files.py`
+*   **File**: `src/capl_formatter/tests_formatter/test_golden_files.py`
 *   **Fixtures**:
-    *   `tests/fixtures/input/*.can`: Messy input code.
-    *   `tests/fixtures/expected/*.can`: Correctly formatted output.
+    *   `src/capl_formatter/tests_formatter/fixtures/input/*.can`: Messy input code.
+    *   `src/capl_formatter/tests_formatter/fixtures/expected/*.can`: Correctly formatted output.
 *   **How to add**: Just drop matching `.can` files into the `input/` and `expected/` directories. The test runner will automatically pick them up.
 
 ### 3. Rule-Specific Unit Tests

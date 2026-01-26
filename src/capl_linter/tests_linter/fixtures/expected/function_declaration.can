@@ -1,0 +1,8 @@
+
+void main() {
+  myFunc(1);
+}
+
+void myFunc(int a) {
+  // implementation
+}

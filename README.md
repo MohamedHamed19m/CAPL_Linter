@@ -1,9 +1,10 @@
-# CAPL Analyzer
+# CAPL Analyzer (capllint)
 
 > Static analysis and linting tools for CAPL (CANoe/CANalyzer Programming Language)
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PyPI](https://img.shields.io/pypi/v/capllint.svg)](https://pypi.org/project/capllint/)
 
 ![Package Overview](./docs/package_desc.png)
 
@@ -19,7 +20,7 @@
 
 ## 💅 Formatting
 
-The `drift format` command provides highly stable, idempotent formatting for CAPL, inspired by modern tools like Ruff and Black.
+The `capllint format` command provides highly stable, idempotent formatting for CAPL, inspired by modern tools like Ruff and Black.
 
 ### Core Features
 
@@ -40,13 +41,13 @@ The `drift format` command provides highly stable, idempotent formatting for CAP
 
 ```bash
 # Format specific files or directories in-place
-uv run drift format MyNode.can src/
+uv run capllint format MyNode.can src/
 
 # Check for violations without modifying (CI mode)
-uv run drift format --check .
+uv run capllint format --check .
 
 # Output results in JSON format
-uv run drift format --json .
+uv run capllint format --json .
 ```
 
 ### Configuration
@@ -80,64 +81,67 @@ reorder-top-level = true  # Standardize architectural order
 - ⚠️ Unused variables, functions, messages, and timers
 - ⚠️ Timers set without handlers
 
-### Style Issues
-- 💅 Naming conventions (global variables should start with `g`, messages with `msg`, timers with `t`)
-- 💅 Code organization and structure
-
 ## 🔧 Installation
 
-### Using UV (Recommended)
+### From PyPI (Recommended)
 
-This project is managed as a [uv workspace](https://docs.astral.sh/uv/concepts/workspaces/).
+```bash
+pip install capllint
+# or with uv
+uv tool install capllint
+```
+
+### Local Development
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/capl-analyzer.git
-cd capl-analyzer
+git clone https://github.com/MohamedHamed19m/CAPL_Linter.git
+cd CAPL_Linter
 
-# Sync the workspace (creates venv and installs all packages)
+# Install dependencies
 uv sync
 
 # Run the linter
-uv run drift lint MyNode.can
+uv run capllint lint MyNode.can
 ```
 
 ## 🏗️ Project Structure
 
-The project is organized into a modular monorepo structure:
+The project is organized as a single package with internal modules:
 
-- **`drift`** (Root): User-facing CLI built with `typer`.
-- **`packages/capl-tree-sitter`**: Core CAPL parsing using tree-sitter.
-- **`packages/capl-symbol-db`**: Symbol extraction and persistent storage (SQLite).
-- **`packages/capl-linter-engine`**: Analysis engine and auto-fix logic.
-- **`packages/capl-formatter`**: AST-based code formatter.
+- **`capllint`** (Root): User-facing CLI built with `typer`.
+- **`src/capl_tree_sitter`**: Core CAPL parsing using tree-sitter.
+- **`src/capl_symbol_db`**: Symbol extraction and persistent storage (SQLite).
+- **`src/capl_linter`**: Analysis engine and auto-fix logic.
+- **`src/capl_formatter`**: AST-based code formatter.
 
 ```
-capl-analyzer/
-├── packages/
-│   ├── capl-tree-sitter/
-│   ├── capl-symbol-db/
-│   ├── capl-linter-engine/
-│   └── capl-formatter/
+CAPL_Linter/
 ├── src/
-│   └── capl_cli/          # CLI source
+│   ├── capl_cli/          # CLI source
+│   ├── capl_tree_sitter/  # Parser layer
+│   ├── capl_symbol_db/    # Database and extraction
+│   ├── capl_linter/       # Analysis and rules
+│   └── capl_formatter/    # Code formatting
+├── tests/                 # Unit and integration tests
 ├── examples/
 ├── docs/
-├── pyproject.toml         # Workspace configuration
+├── pyproject.toml         # Consolidated package configuration
 └── README.md
 ```
 
 ## 🧪 Running Tests
 
 ```bash
-# Run all tests across the entire workspace
-uv run --workspace pytest
+# Run all tests
+uv run pytest
 
-# Run tests for a specific package
-uv run --package capl-linter-engine pytest
+# Run tests for a specific module
+uv run pytest src/capl_linter/
+uv run pytest src/capl_formatter/
 
-# Run with coverage aggregated across the workspace
-uv run --workspace pytest --cov-report=html
+# Run with coverage report
+uv run pytest --cov-report=html
 ```
 
 ## 🤝 Contributing
@@ -159,10 +163,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Built with [tree-sitter](https://tree-sitter.github.io/tree-sitter/) for robust parsing
 - Inspired by modern linting tools and static analyzers
 
-## 📚 Documentation
-
-For detailed documentation, see the [docs](./docs) directory or visit the [wiki](https://github.com/yourusername/capl-analyzer/wiki).
-
 ## 🐛 Known Issues & Roadmap
 
 - [ ] Add support for CAPL 2.0+ features
@@ -175,4 +175,4 @@ For detailed documentation, see the [docs](./docs) directory or visit the [wiki]
 
 ## 💬 Support
 
-If you have any questions or run into issues, please [open an issue](https://github.com/yourusername/capl-analyzer/issues).
+If you have any questions or run into issues, please [open an issue](https://github.com/MohamedHamed19m/CAPL_Linter/issues).

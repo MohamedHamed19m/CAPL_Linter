@@ -1,7 +1,7 @@
 import re
-from typing import List
-from .base import ASTRule, FormattingContext, Transformation
+
 from ..models import FormatterConfig
+from .base import ASTRule, FormattingContext, Transformation
 
 
 class BraceStyleRule(ASTRule):
@@ -18,7 +18,7 @@ class BraceStyleRule(ASTRule):
     def name(self) -> str:
         return "brace-style"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         if not context.tree or self.config.brace_style != "k&r":
             return []
         transformations = []
@@ -77,11 +77,12 @@ class SpacingRule(ASTRule):
     def name(self) -> str:
         return "spacing"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         if not context.tree:
             return []
         transformations = []
 
+        # Part 1: AST-based Logic
         def add_space(node_a, node_b):
             if node_a.end_byte == node_b.start_byte:
                 transformations.append(Transformation(node_a.end_byte, node_a.end_byte, " "))
@@ -154,42 +155,114 @@ class SpacingRule(ASTRule):
 
         traverse(context.tree.root_node)
 
-        # Text-based cleanup pass
-        line_starts = [0]
-        for i in range(len(context.lines) - 1):
-            line_starts.append(line_starts[i] + len(context.lines[i]))
+        # Part 2: Safe Text Cleanup
+        # We use a regex To split source into code, comments, and strings
+        # we only apply cleanup to code segments
 
-        for i, line in enumerate(context.lines):
-            stripped_with_nl = line.lstrip()
-            if not stripped_with_nl.strip():
-                continue
+        # Regex patterns: //comments, /*blocks*/ , "strings", 'chars'
+        split_pattern = r"(//.*|/\*[\s\S]*?\*/|\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*')"
 
-            indent_len = len(line) - len(stripped_with_nl)
-            stripped = stripped_with_nl.rstrip("\n\r")
+        last_pos = 0
+        for match in re.finditer(split_pattern, context.source):
+            # proccess the code segment before this match
+            code_chunk_end = match.start()
+            if code_chunk_end > last_pos:
+                self._process_code_chunk(
+                    context.source[last_pos:code_chunk_end], last_pos, transformations
+                )
 
-            # Remove spaces around dot operator
-            new_s = re.sub(r"\s*\.\s*", ".", stripped)
+            last_pos = match.end()
 
-            # Remove spaces before ++ and --
-            new_s = re.sub(r"(\w+)\s*(\+\+|--)", r"\1\2", new_s)
+        # process any remaining code after the last match
+        if last_pos < len(context.source):
+            self._process_code_chunk(context.source[last_pos:], last_pos, transformations)
 
-            # Collapse multiple spaces to single space
-            new_s = re.sub(r"[ \t]{2,}", " ", new_s)
+        return transformations
 
-            # FIX: Remove extra spaces inside empty/sparse parentheses
-            new_s = re.sub(r"\(\s+\)", "()", new_s)
+    def _process_code_chunk(self, chunk: str, offset: int, transformations: list[Transformation]):
+        """Applies Regex Cleanup to a chunk of raw code"""
 
-            # FIX: Normalize spacing in function declarations
-            new_s = re.sub(r"\(\s+", "(", new_s)
-            new_s = re.sub(r"\s+\)", ")", new_s)
+        if not chunk.strip():
+            return
 
-            if new_s != stripped:
+        # 1. Remove Spaces around dot operator (struct access)
+        # Note: we Capture newline to preserve them
+        # this replaces " . " with "." but leaves "\n." intact
+        # simple approach: chunk based replacementmight be tricky with mapping back to original offsets
+        # Ideally, we find matches in the chunk and create transformations.
+
+        # A. Cleanup for spaces around dot operator
+        for m in re.finditer(r"(\S)\s+\.\s+(\S)", chunk):
+            # Ensure we are not mergin accross lines inappropriately, though \s includes \n
+            # but "struct \n . member" is valid C.
+            # lets restrict to same-line for safety
+            pass
+
+        # we will use the original logic but applied carefully
+        # Original: new_s = re.sub(r"\s*\.\s*", ".", stripped)
+        # that was too aggressive. Lets do: "name . member" -> "name.member"
+
+        # Find "word . word" patterns
+        for m in re.finditer(r"(\w)\s*\.\s*(\w)", chunk):
+            start, end = m.span()
+            original = m.group(0)
+            replacement = f"{m.group(1)}.{m.group(2)}"
+            if original != replacement:
                 transformations.append(
                     Transformation(
-                        line_starts[i] + indent_len,
-                        line_starts[i] + indent_len + len(stripped),
-                        new_s,
+                        start_byte=offset + start,
+                        end_byte=offset + end,
+                        new_content=replacement,
                     )
                 )
 
-        return transformations
+        # 2. Remove spaces before ++ and --
+        for m in re.finditer(r"(\w+)\s+(\+\+|--)", chunk):
+            start, end = m.span()
+            replacement = f"{m.group(1)}.{m.group(2)}"
+            transformations.append(
+                Transformation(
+                    start_byte=offset + start,
+                    end_byte=offset + end,
+                    new_content=replacement,
+                )
+            )
+
+        # 3. Collapse multiple spaces into one (exculding newlines)
+        for m in re.finditer(r"[ \t]{2,}", chunk):
+            start, end = m.span()
+            # if this is indentation (at start of line), we generally want to leave it
+            # (IdentationRule should handle that) but it runs later
+            # If we collapse Indentation, IdentationRule will just put it back
+            # So Safe to Collapse to 1 space?
+            # No: IdentationRule expects clean lines.
+            is_start_of_line = (start == 0) or (chunk[start - 1] == "\n")
+            if not is_start_of_line:
+                transformations.append(
+                    Transformation(
+                        start_byte=offset + start,
+                        end_byte=offset + end,
+                        new_content=" ",
+                    )
+                )
+
+        # 4. Normalize Function Declaration Spacing " ( " -> "("
+        for m in re.finditer(r"\(\s+", chunk):
+            if "\n" not in m.group(0):
+                transformations.append(
+                    Transformation(
+                        start_byte=offset + m.start(),
+                        end_byte=offset + m.end(),
+                        new_content="(",
+                    )
+                )
+
+        for m in re.finditer(r"\s+\)", chunk):
+            if "\n" not in m.group(0):
+                transformations.append(
+                    Transformation(
+                        start_byte=offset + m.start(),
+                        end_byte=offset + m.end(),
+                        new_content=")",
+                    )
+                )

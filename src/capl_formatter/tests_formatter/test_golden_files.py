@@ -1,6 +1,8 @@
-import pytest
 import difflib
 from pathlib import Path
+
+import pytest
+
 from capl_formatter.engine import FormatterEngine
 from capl_formatter.models import FormatterConfig
 

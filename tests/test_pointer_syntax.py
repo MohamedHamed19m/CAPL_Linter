@@ -1,6 +1,6 @@
 from pathlib import Path
+
 from capl_linter.engine import LinterEngine
-from capl_symbol_db.database import SymbolDatabase
 
 
 def test_linter_pointer_syntax():
@@ -50,8 +50,9 @@ def test_arrow_operator_autofix(tmp_path):
 
     db_path = tmp_path / "test.db"
 
-    from src.capl_cli.main import app
     from typer.testing import CliRunner
+
+    from src.capl_cli.main import app
 
     runner = CliRunner()
 

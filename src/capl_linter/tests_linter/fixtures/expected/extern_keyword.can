@@ -1,0 +1,8 @@
+variables {
+  int x;
+  char y[100];
+}
+
+on start {
+  x = 1;
+}

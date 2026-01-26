@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from capl_tree_sitter import ASTWalker, CAPLParser, CAPLPatterns, CAPLQueryHelper
 from tree_sitter import Node
+
+from capl_tree_sitter import ASTWalker, CAPLParser, CAPLPatterns, CAPLQueryHelper
 
 from .models import SymbolInfo
 

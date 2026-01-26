@@ -1,14 +1,14 @@
 from .rules.base import BaseRule
 from .rules.semantic_rules import (
-    UndefinedSymbolRule,
-    DuplicateFunctionRule,
     CircularIncludeRule,
+    DuplicateFunctionRule,
+    UndefinedSymbolRule,
 )
 from .rules.syntax_rules import (
+    ArrowOperatorRule,
     ExternKeywordRule,
     FunctionDeclarationRule,
     GlobalTypeDefinitionRule,
-    ArrowOperatorRule,
     PointerParameterRule,
 )
 from .rules.type_rules import (

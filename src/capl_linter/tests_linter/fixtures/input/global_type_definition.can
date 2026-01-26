@@ -1,0 +1,12 @@
+struct MyStruct {
+  int a;
+};
+
+enum MyEnum {
+  VAL1,
+  VAL2
+};
+
+variables {
+  int x;
+}

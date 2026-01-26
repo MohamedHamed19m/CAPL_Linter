@@ -1,7 +1,7 @@
 import re
-from typing import List, Tuple
-from .base import ASTRule, FormattingContext, Transformation
+
 from ..models import FormatterConfig
+from .base import ASTRule, FormattingContext, Transformation
 
 
 class IncludeSortingRule(ASTRule):
@@ -18,14 +18,14 @@ class IncludeSortingRule(ASTRule):
     def name(self) -> str:
         return "include-sorting"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         # Using regex to find all #include lines at top level
         pattern = r'^\s*#include\s+"([^"]+)"(.*)$'
         matches = list(re.finditer(pattern, context.source, re.MULTILINE))
         if not matches:
             return []
 
-        includes: List[Tuple[str, str, int, int]] = []
+        includes: list[tuple[str, str, int, int]] = []
         seen_paths = set()
         for m in matches:
             path = m.group(1)
@@ -83,7 +83,7 @@ class VariableOrderingRule(ASTRule):
     def name(self) -> str:
         return "variable-ordering"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         if not context.tree:
             return []
         transformations = []

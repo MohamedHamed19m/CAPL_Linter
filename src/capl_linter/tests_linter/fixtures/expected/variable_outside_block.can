@@ -1,0 +1,10 @@
+
+variables {
+  int existingVar;
+  int gVar1;
+  char gVar2[50];
+}
+
+void main() {
+  gVar1 = existingVar;
+}
