@@ -1,0 +1,16 @@
+/*@!Encoding:65001*/
+/**************************************
+ * Test corner cases for the CAN formatter
+***************************************/
+includes{
+  #include "stdio.can"
+  #include "libs/math.can"
+
+  #if x64
+    #pragma library "../libs/dll_file_64.dll"
+  #else
+    #pragma library "../libs/dll_file_32.dll"
+  #endif
+
+  #include "../relative/path/to/lib.can"
+}

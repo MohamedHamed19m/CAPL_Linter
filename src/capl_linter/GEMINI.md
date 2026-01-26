@@ -59,6 +59,7 @@ Golden files verify that auto-fixes produce the exact desired source code.
 
 ### Step 1: Isolate the AST
 If a rule isn't firing, see how tree-sitter sees the code:
+Create debug_ast.py and execute it.
 ```bash
 uv run python debug_ast.py
 ```
