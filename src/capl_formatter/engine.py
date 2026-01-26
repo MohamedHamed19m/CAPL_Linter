@@ -1,9 +1,11 @@
-from typing import List, Union, Dict, Any, Optional
-from pathlib import Path
 import re
-from .models import FormatterConfig, FormatResult, FormatResults, CommentAttachment
-from .rules.base import ASTRule, TextRule, FormattingContext, Transformation
+from pathlib import Path
+from typing import Any, Union
+
 from capl_tree_sitter.parser import CAPLParser
+
+from .models import CommentAttachment, FormatResult, FormatResults, FormatterConfig
+from .rules.base import ASTRule, FormattingContext, TextRule, Transformation
 
 # Type alias for formatting rules
 FormattingRule = Union[ASTRule, TextRule]
@@ -14,7 +16,7 @@ class FormatterEngine:
 
     def __init__(self, config: FormatterConfig):
         self.config = config
-        self.rules: List[FormattingRule] = []
+        self.rules: list[FormattingRule] = []
         self.parser = CAPLParser()
 
     def add_rule(self, rule: FormattingRule) -> None:
@@ -24,19 +26,16 @@ class FormatterEngine:
     def add_default_rules(self) -> None:
         """Register all default formatting rules in the recommended order."""
         from .rules import (
-            QuoteNormalizationRule,
-            IncludeSortingRule,
-            VariableOrderingRule,
-            # CommentReflowRule,  # Moved to Phase 4
-            IntelligentWrappingRule,
             BlockExpansionRule,
+            BraceStyleRule,
+            IncludeSortingRule,
+            IntelligentWrappingRule,
+            QuoteNormalizationRule,
+            SpacingRule,
             StatementSplitRule,
             SwitchNormalizationRule,
-            BraceStyleRule,
-            SpacingRule,
+            VariableOrderingRule,
             VerticalSpacingRule,
-            IndentationRule,
-            WhitespaceCleanupRule,
         )
 
         self.add_rule(QuoteNormalizationRule(self.config))
@@ -184,7 +183,7 @@ class FormatterEngine:
 
         return FormatResult(source=current_source, modified=modified, errors=errors)
 
-    def _build_comment_attachment_map(self, source: str, tree) -> Dict[int, CommentAttachment]:
+    def _build_comment_attachment_map(self, source: str, tree) -> dict[int, CommentAttachment]:
         """Builds a map of comment attachments."""
         comments = self._find_all_comments(tree)
         attachment_map = {}
@@ -196,7 +195,7 @@ class FormatterEngine:
 
         return attachment_map
 
-    def _classify_comment(self, comment_node, source_lines: List[str]) -> CommentAttachment:
+    def _classify_comment(self, comment_node, source_lines: list[str]) -> CommentAttachment:
         """Determines the type of comment and its target node."""
         prev_sibling = comment_node.prev_sibling
         next_sibling = comment_node.next_sibling
@@ -242,7 +241,7 @@ class FormatterEngine:
         # Standalone
         return CommentAttachment(comment_node, "standalone", None, comment_line, -1, 0)
 
-    def _find_all_comments(self, tree) -> List[Any]:
+    def _find_all_comments(self, tree) -> list[Any]:
         """Recursively finds all comment nodes in the tree."""
         comments = []
         if not tree:
@@ -291,7 +290,7 @@ class FormatterEngine:
             return source
 
     def _cleanup_vertical_whitespace(
-        self, source: str, comment_map: Optional[Dict[int, CommentAttachment]] = None
+        self, source: str, comment_map: dict[int, CommentAttachment] | None = None
     ) -> str:
         """Aggressively removes excessive blank lines BEFORE indentation."""
 
@@ -330,7 +329,7 @@ class FormatterEngine:
 
         return source
 
-    def _apply_transformations(self, source: str, transforms: List[Transformation]) -> str:
+    def _apply_transformations(self, source: str, transforms: list[Transformation]) -> str:
         """Applies non-overlapping character-based transformations in a single pass."""
         sorted_transforms = sorted(transforms, key=lambda t: (t.start_byte, t.end_byte, t.priority))
         result = []
@@ -344,7 +343,7 @@ class FormatterEngine:
         result.append(source[last_offset:])
         return "".join(result)
 
-    def format_files(self, files: List[Path]) -> FormatResults:
+    def format_files(self, files: list[Path]) -> FormatResults:
         """Batch format multiple files on disk."""
         results = []
         modified_count = 0

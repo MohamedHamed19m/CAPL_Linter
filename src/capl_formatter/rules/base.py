@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Any
+from typing import Any
+
 from tree_sitter import Tree
 
 
@@ -27,9 +28,9 @@ class FormattingContext:
 
     source: str
     file_path: str = ""
-    tree: Optional[Tree] = None
-    lines: List[str] = None
-    metadata: Dict[str, Any] = None
+    tree: Tree | None = None
+    lines: list[str] = None
+    metadata: dict[str, Any] = None
 
     def __post_init__(self):
         if self.lines is None:
@@ -56,7 +57,7 @@ class ASTRule(FormattingRule):
     """A rule that relies on tree-sitter AST for structural analysis."""
 
     @abstractmethod
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         pass
 
 
@@ -64,5 +65,5 @@ class TextRule(FormattingRule):
     """A rule that operates primarily on raw text or line patterns."""
 
     @abstractmethod
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         pass

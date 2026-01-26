@@ -197,7 +197,9 @@ class SymbolDatabase:
         try:
             with conn:
                 # Find file_id first
-                cursor = conn.execute("SELECT file_id FROM files WHERE file_path = ?", (file_path_abs,))
+                cursor = conn.execute(
+                    "SELECT file_id FROM files WHERE file_path = ?", (file_path_abs,)
+                )
                 res = cursor.fetchone()
                 if res:
                     file_id = res[0]

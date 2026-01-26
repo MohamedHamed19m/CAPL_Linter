@@ -2,9 +2,8 @@ import re
 import sqlite3
 from pathlib import Path
 
-from capl_tree_sitter import ASTWalker, CAPLParser, CAPLPatterns
-
 from capl_symbol_db.database import SymbolDatabase
+from capl_tree_sitter import ASTWalker, CAPLParser, CAPLPatterns
 
 from ..models import InternalIssue, Severity
 from .base import BaseRule
@@ -138,6 +137,7 @@ class GlobalTypeDefinitionRule(BaseRule):
     def fix(self, file_path: Path, issues: list[InternalIssue]) -> str:
         lines = file_path.read_text(encoding="utf-8").split("\n")
         from .variable_rules import VariableOutsideBlockRule
+
         v_rule = VariableOutsideBlockRule()
 
         # 1. Collect and remove all definitions from bottom to top
@@ -169,7 +169,7 @@ class GlobalTypeDefinitionRule(BaseRule):
                 # Remove from lines
                 for _ in range(len(def_lines)):
                     lines.pop(start_line_idx)
-                
+
                 to_move.append([line.strip() for line in def_lines])
 
         # 2. Ensure block exists
@@ -183,7 +183,7 @@ class GlobalTypeDefinitionRule(BaseRule):
             lines.insert(insert_pos, "variables {")
             lines.insert(insert_pos + 1, "}")
             var_block_end = insert_pos + 1
-        
+
         # 3. Insert all collected definitions
         for def_lines in reversed(to_move):
             for def_line in def_lines:

@@ -1,7 +1,7 @@
-import pytest
 from capl_linter.engine import LinterEngine
 from capl_symbol_db.database import SymbolDatabase
 from capl_symbol_db.extractor import SymbolExtractor
+
 
 def format_issues_for_snapshot(issues):
     """Convert a list of issues into a stable string for snapshot comparison."""
@@ -9,8 +9,11 @@ def format_issues_for_snapshot(issues):
     sorted_issues = sorted(issues, key=lambda x: (x.line, x.rule_id))
     lines = []
     for issue in sorted_issues:
-        lines.append(f"Line {issue.line}: [{issue.rule_id}] {issue.severity.name} - {issue.message}")
+        lines.append(
+            f"Line {issue.line}: [{issue.rule_id}] {issue.severity.name} - {issue.message}"
+        )
     return "\n".join(lines)
+
 
 class TestLinterSnapshots:
     """Snapshot tests for linter issue reporting."""

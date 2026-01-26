@@ -1,6 +1,8 @@
 from pathlib import Path
 
 import typer
+
+from capl_formatter.engine import FormatterEngine
 from capl_linter.autofix import AutoFixEngine
 from capl_linter.engine import LinterEngine
 from capl_linter.registry import registry
@@ -8,25 +10,8 @@ from capl_symbol_db.database import SymbolDatabase
 from capl_symbol_db.extractor import SymbolExtractor
 from capl_symbol_db.xref import CrossReferenceBuilder
 
-from .config import LintConfig, FormatConfig
+from .config import FormatConfig, LintConfig
 from .converters import internal_issue_to_lint_issue
-
-from capl_formatter.engine import FormatterEngine
-from capl_formatter.models import FormatterConfig
-from capl_formatter.rules import (
-    WhitespaceCleanupRule,
-    IndentationRule,
-    SpacingRule,
-    BraceStyleRule,
-    BlockExpansionRule,
-    StatementSplitRule,
-    SwitchNormalizationRule,
-    IncludeSortingRule,
-    VariableOrderingRule,
-    CommentReflowRule,
-    IntelligentWrappingRule,
-    QuoteNormalizationRule,
-)
 
 app = typer.Typer(help="CAPL Static Analyzer - Analyze CAPL code for issues and dependencies")
 

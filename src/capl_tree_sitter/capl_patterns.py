@@ -1,6 +1,7 @@
 """CAPL-specific AST pattern recognition."""
 
 from tree_sitter import Node
+
 from .ast_walker import ASTWalker
 
 
@@ -68,7 +69,7 @@ class CAPLPatterns:
 
         CAPL uses variables {} as a keyword-like construct, but tree-sitter
         sees it as a compound statement with 'variables' identifier.
-        
+
         Tree-sitter-c parses it as:
         - ERROR node containing "variables"
         - followed by compound_statement
@@ -166,7 +167,7 @@ class CAPLPatterns:
     @staticmethod
     def get_variable_name(var_node: Node, source: bytes | str) -> str | None:
         """Extract variable name from a declaration or parameter_declaration node.
-        
+
         Handles arrays, pointers, and simple identifiers by finding the first identifier.
         """
         if var_node.type not in ("declaration", "parameter_declaration"):
@@ -175,20 +176,25 @@ class CAPLPatterns:
         # Robust approach: find the first identifier that is NOT a type name
         # In a declaration, the identifier is usually a descendant.
         # We skip identifiers inside type_specifiers if possible.
-        
+
         # Try to find identifier that is part of a declarator
         name_node = None
-        
+
         # Look for the first identifier that's not inside a type_specifier/type_identifier
         # We walk the children and look for declarators
         for child in var_node.children:
-            if child.type in ("identifier", "init_declarator", "array_declarator", "pointer_declarator"):
+            if child.type in (
+                "identifier",
+                "init_declarator",
+                "array_declarator",
+                "pointer_declarator",
+            ):
                 # Recursive search for the identifier within this declarator
                 id_nodes = ASTWalker.find_all_by_type(child, "identifier")
                 if id_nodes:
                     name_node = id_nodes[0]
                     break
-        
+
         if not name_node:
             # Fallback: just find any identifier
             id_nodes = ASTWalker.find_all_by_type(var_node, "identifier")
@@ -430,7 +436,7 @@ class CAPLPatterns:
                         "expression": expr_text,
                         "line": expr.start_point[0] + 1,
                         "column": expr.start_point[1],
-                        "message": f"Arrow operator '->' is not supported in CAPL. Use dot notation instead.",
+                        "message": "Arrow operator '->' is not supported in CAPL. Use dot notation instead.",
                     }
                 )
 

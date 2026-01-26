@@ -1,6 +1,5 @@
-from typing import List
-from .base import ASTRule, FormattingContext, Transformation
 from ..models import FormatterConfig
+from .base import ASTRule, FormattingContext, Transformation
 
 
 class StatementSplitRule(ASTRule):
@@ -17,7 +16,7 @@ class StatementSplitRule(ASTRule):
     def name(self) -> str:
         return "statement-splitting"
 
-    def analyze(self, context: FormattingContext) -> List[Transformation]:
+    def analyze(self, context: FormattingContext) -> list[Transformation]:
         if not context.tree:
             return []
         transformations = []

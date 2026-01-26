@@ -33,7 +33,7 @@ class VariableOutsideBlockRule(BaseRule):
 
     def fix(self, file_path: Path, issues: list[InternalIssue]) -> str:
         lines = file_path.read_text(encoding="utf-8").split("\n")
-        
+
         # 1. Collect all variables to move (with their lines)
         # Sort by line number descending to avoid index shifting during removal
         sorted_issues = sorted(issues, key=lambda x: x.line, reverse=True)
@@ -56,7 +56,7 @@ class VariableOutsideBlockRule(BaseRule):
             lines.insert(insert_pos, "variables {")
             lines.insert(insert_pos + 1, "}")
             var_block_end = insert_pos + 1
-        
+
         # 3. Insert all moved variables into the block
         # Use reversed(to_move) because we collected them bottom-up (reverse=True)
         # but we want to insert them at the END of the block in original order.
@@ -69,7 +69,7 @@ class VariableOutsideBlockRule(BaseRule):
     def _find_variables_block_range(self, lines: list[str]):
         start_idx = None
         open_brace_idx = None
-        
+
         # 1. Find "variables" keyword
         for i, line in enumerate(lines):
             # Ignore comments (simple check)
@@ -82,7 +82,7 @@ class VariableOutsideBlockRule(BaseRule):
                 start_idx = i
                 open_brace_idx = i
                 break
-        
+
         if start_idx is None:
             return None, None
 
@@ -92,7 +92,7 @@ class VariableOutsideBlockRule(BaseRule):
                 if "{" in lines[i]:
                     open_brace_idx = i
                     break
-        
+
         if open_brace_idx is None:
             return None, None
 
@@ -104,10 +104,10 @@ class VariableOutsideBlockRule(BaseRule):
             # A more robust approach would use AST, but this is a text-based fix.
             brace_count += line.count("{")
             brace_count -= line.count("}")
-            
+
             if brace_count == 0:
                 return start_idx, i
-                
+
         return None, None
 
 
