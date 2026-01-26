@@ -1,9 +1,0 @@
-digraph Dependencies {
-  rankdir=LR;
-  node [shape=box];
-
-  "AdvancedNode.can" -> "CommonDefinitions.cin";
-  "AdvancedNode.can" -> "Utility.cin";
-  "MainNode.can" -> "CommonDefinitions.cin";
-  "SecondNode.can" -> "CommonDefinitions.cin";
-}
